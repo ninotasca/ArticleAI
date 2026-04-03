@@ -1,0 +1,27 @@
+export interface Article {
+  id: number;
+  title: string;
+  deck: string;
+  body: string;
+}
+
+export interface Prompt {
+  id: string;
+  name: string;
+  template: string;
+  targetField: 'title' | 'deck' | 'body';
+}
+
+export interface ComparisonResultRow {
+  article: Article;
+  results: Record<string, string>; // promptId -> AI output
+}
+
+export interface ComparisonResult {
+  results: ComparisonResultRow[];
+  meta: {
+    totalArticles: number;
+    totalPrompts: number;
+    duration: number;
+  };
+}
