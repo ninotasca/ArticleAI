@@ -12,6 +12,12 @@ export interface Prompt {
   targetField: 'title' | 'deck' | 'body';
 }
 
+export interface Persona {
+  id: string;
+  title: string;
+  persona: string;
+}
+
 export interface ComparisonResultRow {
   article: Article;
   results: Record<string, string>; // promptId -> AI output

@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
 import { PromptManager } from './components/PromptManager';
+import { PersonaManager } from './components/PersonaManager';
 import { ComparisonRunner } from './components/ComparisonRunner';
 import { ResultsTable } from './components/ResultsTable';
 import { QuickTest } from './components/QuickTest';
 import { AiTest } from './components/AiTest';
-import { healthCheck, fetchPrompts, createPromptApi, updatePromptApi, deletePromptApi } from './api';
-import type { Prompt, ComparisonResult } from './types';
+import { healthCheck, fetchPrompts, fetchPersonas } from './api';
+import type { Prompt, Persona, ComparisonResult } from './types';
 
-type Tab = 'test' | 'ai-test' | 'prompts' | 'compare' | 'results';
+type Tab = 'test' | 'ai-test' | 'prompts' | 'personas' | 'compare' | 'results';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('test');
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [promptsLoading, setPromptsLoading] = useState(true);
+  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [personasLoading, setPersonasLoading] = useState(true);
   const [comparisonResult, setComparisonResult] =
     useState<ComparisonResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -27,6 +30,14 @@ function App() {
       .then((p) => setPrompts(p))
       .catch((err) => console.error('Failed to load prompts:', err))
       .finally(() => setPromptsLoading(false));
+  }, []);
+
+  // Load personas from Supabase on mount
+  useEffect(() => {
+    fetchPersonas()
+      .then((p) => setPersonas(p))
+      .catch((err) => console.error('Failed to load personas:', err))
+      .finally(() => setPersonasLoading(false));
   }, []);
 
   // Check backend health on mount
@@ -87,6 +98,12 @@ function App() {
           📝 Prompts ({prompts.length})
         </button>
         <button
+          className={activeTab === 'personas' ? 'active' : ''}
+          onClick={() => setActiveTab('personas')}
+        >
+          🎭 Personas ({personas.length})
+        </button>
+        <button
           className={activeTab === 'compare' ? 'active' : ''}
           onClick={() => setActiveTab('compare')}
           disabled={prompts.length === 0}
@@ -110,6 +127,13 @@ function App() {
             prompts={prompts}
             setPrompts={setPrompts}
             loading={promptsLoading}
+          />
+        )}
+        {activeTab === 'personas' && (
+          <PersonaManager
+            personas={personas}
+            setPersonas={setPersonas}
+            loading={personasLoading}
           />
         )}
         {activeTab === 'compare' && (

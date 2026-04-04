@@ -20,6 +20,12 @@ export interface Prompt {
   targetField: 'title' | 'deck' | 'body';
 }
 
+export interface Persona {
+  id: string;
+  title: string;
+  persona: string;
+}
+
 export interface ComparisonRequest {
   prompts: Prompt[];
   articleIds: number[];

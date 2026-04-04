@@ -1,4 +1,4 @@
-import type { Prompt, ComparisonResult, Article } from './types';
+import type { Prompt, ComparisonResult, Article, Persona } from './types';
 
 const API_BASE = '/api';
 
@@ -104,5 +104,46 @@ export async function deletePromptApi(id: string): Promise<void> {
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(errorText || 'Failed to delete prompt');
+  }
+}
+
+/* ── Persona CRUD ── */
+
+export async function fetchPersonas(): Promise<Persona[]> {
+  const res = await fetch(`${API_BASE}/personas`);
+  const data = await handleResponse<{ personas: Persona[] }>(res);
+  return data.personas;
+}
+
+export async function createPersonaApi(
+  persona: Omit<Persona, 'id'>
+): Promise<Persona> {
+  const res = await fetch(`${API_BASE}/personas`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(persona),
+  });
+  const data = await handleResponse<{ persona: Persona }>(res);
+  return data.persona;
+}
+
+export async function updatePersonaApi(
+  id: string,
+  persona: Partial<Omit<Persona, 'id'>>
+): Promise<Persona> {
+  const res = await fetch(`${API_BASE}/personas/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(persona),
+  });
+  const data = await handleResponse<{ persona: Persona }>(res);
+  return data.persona;
+}
+
+export async function deletePersonaApi(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/personas/${id}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || 'Failed to delete persona');
   }
 }
