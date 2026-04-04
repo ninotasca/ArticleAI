@@ -44,14 +44,14 @@ export function PersonaManager({ personas, setPersonas, loading }: Props) {
       }
       resetForm();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save persona');
+      setError(err instanceof Error ? err.message : 'Failed to save brand voice');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this persona?')) return;
+    if (!confirm('Delete this brand voice?')) return;
     setError(null);
     try {
       await deletePersonaApi(id);
@@ -59,7 +59,7 @@ export function PersonaManager({ personas, setPersonas, loading }: Props) {
       if (editingId === id) resetForm();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Failed to delete persona'
+        err instanceof Error ? err.message : 'Failed to delete brand voice'
       );
     }
   };
@@ -74,7 +74,7 @@ export function PersonaManager({ personas, setPersonas, loading }: Props) {
       setPersonas([...personas, created]);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Failed to duplicate persona'
+        err instanceof Error ? err.message : 'Failed to duplicate brand voice'
       );
     }
   };
@@ -83,7 +83,7 @@ export function PersonaManager({ personas, setPersonas, loading }: Props) {
     <div className="prompt-manager">
       {loading && (
         <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
-          ⏳ Loading personas from database…
+          ⏳ Loading brand voices from database…
         </div>
       )}
 
@@ -102,7 +102,7 @@ export function PersonaManager({ personas, setPersonas, loading }: Props) {
 
       {/* ── Form ── */}
       <div className="prompt-form card">
-        <h2>{editingId ? '✏️ Edit AI Persona' : '➕ Create New AI Persona'}</h2>
+        <h2>{editingId ? '✏️ Edit Brand Voice' : '➕ Create New Brand Voice'}</h2>
 
         <div className="form-group">
           <label>Title</label>
@@ -115,16 +115,16 @@ export function PersonaManager({ personas, setPersonas, loading }: Props) {
         </div>
 
         <div className="form-group">
-          <label>Persona</label>
+          <label>Brand Voice</label>
           <textarea
             value={persona}
             onChange={(e) => setPersona(e.target.value)}
-            placeholder={`Describe the AI persona in detail.\n\nExample: You are a seasoned newspaper editor with 20 years of experience. You value clarity, conciseness, and accuracy above all else. You are critical but constructive, always providing specific suggestions for improvement…`}
+            placeholder={`Describe the brand voice in detail.\n\nExample: You are a seasoned newspaper editor with 20 years of experience. You value clarity, conciseness, and accuracy above all else. You are critical but constructive, always providing specific suggestions for improvement…`}
             rows={12}
             style={{ minHeight: '200px' }}
           />
           <div className="form-hint">
-            Describe the persona's role, tone, expertise, and behavior. This
+            Describe the voice's role, tone, expertise, and behavior. This
             will be used as a system prompt when running AI tasks.
           </div>
         </div>
@@ -138,8 +138,8 @@ export function PersonaManager({ personas, setPersonas, loading }: Props) {
             {saving
               ? '⏳ Saving…'
               : editingId
-                ? 'Update Persona'
-                : 'Create Persona'}
+                ? 'Update Brand Voice'
+                : 'Create Brand Voice'}
           </button>
           {editingId && (
             <button className="btn-secondary" onClick={resetForm}>
@@ -152,7 +152,7 @@ export function PersonaManager({ personas, setPersonas, loading }: Props) {
       {/* ── Persona List ── */}
       {personas.length > 0 && (
         <div className="prompt-list">
-          <h2>Your AI Personas</h2>
+          <h2>Your Brand Voices</h2>
           {personas.map((p) => (
             <div
               key={p.id}
@@ -160,7 +160,7 @@ export function PersonaManager({ personas, setPersonas, loading }: Props) {
             >
               <div className="prompt-card-header">
                 <h3>{p.title}</h3>
-                <span className="badge badge-title">persona</span>
+                <span className="badge badge-title">brand voice</span>
               </div>
               <pre className="prompt-preview">{p.persona}</pre>
               <div className="prompt-card-actions">
@@ -182,7 +182,7 @@ export function PersonaManager({ personas, setPersonas, loading }: Props) {
 
       {personas.length === 0 && !loading && (
         <div className="empty-hero">
-          <p>🎭 Create your first AI persona above to get started!</p>
+          <p>� Create your first brand voice above to get started!</p>
         </div>
       )}
     </div>

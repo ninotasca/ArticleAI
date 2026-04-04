@@ -32,7 +32,7 @@ function App() {
       .finally(() => setPromptsLoading(false));
   }, []);
 
-  // Load personas from Supabase on mount
+  // Load brand voices from Supabase on mount
   useEffect(() => {
     fetchPersonas()
       .then((p) => setPersonas(p))
@@ -101,7 +101,7 @@ function App() {
           className={activeTab === 'personas' ? 'active' : ''}
           onClick={() => setActiveTab('personas')}
         >
-          🎭 Personas ({personas.length})
+          � Brand Voices ({personas.length})
         </button>
         <button
           className={activeTab === 'compare' ? 'active' : ''}
