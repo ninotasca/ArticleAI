@@ -65,3 +65,44 @@ export async function runAiTest(
   });
   return handleResponse(res);
 }
+
+/* ── Prompt CRUD ── */
+
+export async function fetchPrompts(): Promise<Prompt[]> {
+  const res = await fetch(`${API_BASE}/prompts`);
+  const data = await handleResponse<{ prompts: Prompt[] }>(res);
+  return data.prompts;
+}
+
+export async function createPromptApi(
+  prompt: Omit<Prompt, 'id'>
+): Promise<Prompt> {
+  const res = await fetch(`${API_BASE}/prompts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(prompt),
+  });
+  const data = await handleResponse<{ prompt: Prompt }>(res);
+  return data.prompt;
+}
+
+export async function updatePromptApi(
+  id: string,
+  prompt: Partial<Omit<Prompt, 'id'>>
+): Promise<Prompt> {
+  const res = await fetch(`${API_BASE}/prompts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(prompt),
+  });
+  const data = await handleResponse<{ prompt: Prompt }>(res);
+  return data.prompt;
+}
+
+export async function deletePromptApi(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/prompts/${id}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || 'Failed to delete prompt');
+  }
+}

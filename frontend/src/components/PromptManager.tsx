@@ -1,24 +1,29 @@
 import { useState } from 'react';
 import type { Prompt } from '../types';
+import { createPromptApi, updatePromptApi, deletePromptApi } from '../api';
 
 interface Props {
   prompts: Prompt[];
   setPrompts: (prompts: Prompt[]) => void;
+  loading?: boolean;
 }
 
-export function PromptManager({ prompts, setPrompts }: Props) {
+export function PromptManager({ prompts, setPrompts, loading }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [targetField, setTargetField] = useState<'title' | 'deck' | 'body'>(
     'title'
   );
   const [template, setTemplate] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const resetForm = () => {
     setEditingId(null);
     setName('');
     setTargetField('title');
     setTemplate('');
+    setError(null);
   };
 
   const handleEdit = (prompt: Prompt) => {
@@ -26,46 +31,79 @@ export function PromptManager({ prompts, setPrompts }: Props) {
     setName(prompt.name);
     setTargetField(prompt.targetField);
     setTemplate(prompt.template);
+    setError(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim() || !template.trim()) return;
+    setSaving(true);
+    setError(null);
 
-    if (editingId) {
-      setPrompts(
-        prompts.map((p) =>
-          p.id === editingId ? { ...p, name, targetField, template } : p
-        )
-      );
-    } else {
-      const newPrompt: Prompt = {
-        id: crypto.randomUUID(),
-        name,
-        targetField,
-        template,
-      };
-      setPrompts([...prompts, newPrompt]);
+    try {
+      if (editingId) {
+        const updated = await updatePromptApi(editingId, {
+          name,
+          targetField,
+          template,
+        });
+        setPrompts(prompts.map((p) => (p.id === editingId ? updated : p)));
+      } else {
+        const created = await createPromptApi({ name, targetField, template });
+        setPrompts([...prompts, created]);
+      }
+      resetForm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save prompt');
+    } finally {
+      setSaving(false);
     }
-    resetForm();
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('Delete this prompt?')) return;
-    setPrompts(prompts.filter((p) => p.id !== id));
-    if (editingId === id) resetForm();
+    setError(null);
+    try {
+      await deletePromptApi(id);
+      setPrompts(prompts.filter((p) => p.id !== id));
+      if (editingId === id) resetForm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete prompt');
+    }
   };
 
-  const handleDuplicate = (prompt: Prompt) => {
-    const newPrompt: Prompt = {
-      ...prompt,
-      id: crypto.randomUUID(),
-      name: `${prompt.name} (copy)`,
-    };
-    setPrompts([...prompts, newPrompt]);
+  const handleDuplicate = async (prompt: Prompt) => {
+    setError(null);
+    try {
+      const created = await createPromptApi({
+        name: `${prompt.name} (copy)`,
+        targetField: prompt.targetField,
+        template: prompt.template,
+      });
+      setPrompts([...prompts, created]);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to duplicate prompt'
+      );
+    }
   };
 
   return (
     <div className="prompt-manager">
+      {loading && (
+        <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
+          ⏳ Loading prompts from database…
+        </div>
+      )}
+
+      {error && (
+        <div
+          className="card"
+          style={{ background: '#ffeaea', color: '#c00', marginBottom: '1rem' }}
+        >
+          ⚠️ {error}
+        </div>
+      )}
+
       {/* ── Form ── */}
       <div className="prompt-form card">
         <h2>{editingId ? '✏️ Edit Prompt' : '➕ Create New Prompt'}</h2>
@@ -115,9 +153,13 @@ export function PromptManager({ prompts, setPrompts }: Props) {
           <button
             className="btn-primary"
             onClick={handleSave}
-            disabled={!name.trim() || !template.trim()}
+            disabled={!name.trim() || !template.trim() || saving}
           >
-            {editingId ? 'Update Prompt' : 'Create Prompt'}
+            {saving
+              ? '⏳ Saving…'
+              : editingId
+                ? 'Update Prompt'
+                : 'Create Prompt'}
           </button>
           {editingId && (
             <button className="btn-secondary" onClick={resetForm}>

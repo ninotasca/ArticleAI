@@ -4,21 +4,15 @@ import { ComparisonRunner } from './components/ComparisonRunner';
 import { ResultsTable } from './components/ResultsTable';
 import { QuickTest } from './components/QuickTest';
 import { AiTest } from './components/AiTest';
-import { healthCheck } from './api';
+import { healthCheck, fetchPrompts, createPromptApi, updatePromptApi, deletePromptApi } from './api';
 import type { Prompt, ComparisonResult } from './types';
 
 type Tab = 'test' | 'ai-test' | 'prompts' | 'compare' | 'results';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('test');
-  const [prompts, setPrompts] = useState<Prompt[]>(() => {
-    try {
-      const saved = localStorage.getItem('articleai-prompts');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [promptsLoading, setPromptsLoading] = useState(true);
   const [comparisonResult, setComparisonResult] =
     useState<ComparisonResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -27,10 +21,13 @@ function App() {
     openai: boolean;
   } | null>(null);
 
-  // Persist prompts to localStorage
+  // Load prompts from Supabase on mount
   useEffect(() => {
-    localStorage.setItem('articleai-prompts', JSON.stringify(prompts));
-  }, [prompts]);
+    fetchPrompts()
+      .then((p) => setPrompts(p))
+      .catch((err) => console.error('Failed to load prompts:', err))
+      .finally(() => setPromptsLoading(false));
+  }, []);
 
   // Check backend health on mount
   useEffect(() => {
@@ -109,7 +106,11 @@ function App() {
         {activeTab === 'test' && <QuickTest />}
         {activeTab === 'ai-test' && <AiTest />}
         {activeTab === 'prompts' && (
-          <PromptManager prompts={prompts} setPrompts={setPrompts} />
+          <PromptManager
+            prompts={prompts}
+            setPrompts={setPrompts}
+            loading={promptsLoading}
+          />
         )}
         {activeTab === 'compare' && (
           <ComparisonRunner
