@@ -1,4 +1,4 @@
-import type { Prompt, ComparisonResult, Article, Persona } from './types';
+import type { Prompt, ComparisonResult, Article, Persona, BuiltPrompt } from './types';
 
 const API_BASE = '/api';
 
@@ -145,5 +145,46 @@ export async function deletePersonaApi(id: string): Promise<void> {
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(errorText || 'Failed to delete persona');
+  }
+}
+
+/* ── Built Prompt CRUD ── */
+
+export async function fetchBuiltPrompts(): Promise<BuiltPrompt[]> {
+  const res = await fetch(`${API_BASE}/built-prompts`);
+  const data = await handleResponse<{ builtPrompts: BuiltPrompt[] }>(res);
+  return data.builtPrompts;
+}
+
+export async function createBuiltPromptApi(
+  bp: Omit<BuiltPrompt, 'id'>
+): Promise<BuiltPrompt> {
+  const res = await fetch(`${API_BASE}/built-prompts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bp),
+  });
+  const data = await handleResponse<{ builtPrompt: BuiltPrompt }>(res);
+  return data.builtPrompt;
+}
+
+export async function updateBuiltPromptApi(
+  id: string,
+  bp: Partial<Omit<BuiltPrompt, 'id'>>
+): Promise<BuiltPrompt> {
+  const res = await fetch(`${API_BASE}/built-prompts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bp),
+  });
+  const data = await handleResponse<{ builtPrompt: BuiltPrompt }>(res);
+  return data.builtPrompt;
+}
+
+export async function deleteBuiltPromptApi(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/built-prompts/${id}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || 'Failed to delete built prompt');
   }
 }

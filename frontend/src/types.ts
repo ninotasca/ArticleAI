@@ -18,6 +18,18 @@ export interface Persona {
   persona: string;
 }
 
+export interface BuiltPrompt {
+  id: string;
+  name: string;
+  brandVoiceInstructions: string;
+  brandVoiceId: string | null;
+  titlePromptId: string | null;
+  bodyPromptId: string | null;
+  additionalInstructions: string;
+  outputRules: string;
+  assembledPrompt: string;
+}
+
 export interface ComparisonResultRow {
   article: Article;
   results: Record<string, string>; // promptId -> AI output

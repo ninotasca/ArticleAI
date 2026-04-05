@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Four-pointed star -->
+  <polygon points="100,5 112,80 100,60 88,80" fill="#1a56db"/>
+  <polygon points="100,195 112,120 100,140 88,120" fill="#1a56db"/>
+  <polygon points="5,100 80,88 60,100 80,112" fill="#1a56db"/>
+  <polygon points="195,100 120,88 140,100 120,112" fill="#1a56db"/>
+  <!-- Diagonal rays -->
+  <polygon points="100,5 108,75 100,55 92,75" fill="#1a56db" transform="rotate(45 100 100)"/>
+  <polygon points="100,195 108,125 100,145 92,125" fill="#1a56db" transform="rotate(45 100 100)"/>
+  <polygon points="5,100 75,92 55,100 75,108" fill="#1a56db" transform="rotate(45 100 100)"/>
+  <polygon points="195,100 125,92 145,100 125,108" fill="#1a56db" transform="rotate(45 100 100)"/>
+  <!-- Four dots -->
+  <circle cx="100" cy="15" r="8" fill="#1a56db"/>
+  <circle cx="100" cy="185" r="8" fill="#1a56db"/>
+  <circle cx="15" cy="100" r="8" fill="#1a56db"/>
+  <circle cx="185" cy="100" r="8" fill="#1a56db"/>
+</svg>

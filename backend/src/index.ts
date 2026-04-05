@@ -6,6 +6,7 @@ import compareRouter from './routes/compare.js';
 import aiTestRouter from './routes/aiTest.js';
 import promptsRouter from './routes/prompts.js';
 import personasRouter from './routes/personas.js';
+import builtPromptsRouter from './routes/builtPrompts.js';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001');
@@ -19,6 +20,7 @@ app.use('/api/compare', compareRouter);
 app.use('/api/ai-test', aiTestRouter);
 app.use('/api/prompts', promptsRouter);
 app.use('/api/personas', personasRouter);
+app.use('/api/built-prompts', builtPromptsRouter);
 
 // Health check — reports which services are configured
 app.get('/api/health', (_req, res) => {
