@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import path from 'path';
 import articlesRouter from './routes/articles.js';
 import compareRouter from './routes/compare.js';
 import aiTestRouter from './routes/aiTest.js';
@@ -11,14 +10,9 @@ import builtPromptsRouter from './routes/builtPrompts.js';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001');
-const repoRoot = process.cwd();
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-
-app.get('/api/experiments/title-prompts/latest.json', (_req, res) => {
-  res.sendFile(path.join(repoRoot, 'experiments', 'title-prompts', 'latest.json'));
-});
 
 // Routes
 app.use('/api/articles', articlesRouter);

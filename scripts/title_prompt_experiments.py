@@ -294,7 +294,10 @@ def main() -> None:
 
     json_path = OUT_DIR / "latest.json"
     md_path = OUT_DIR / "latest.md"
-    json_path.write_text(json.dumps(report, indent=2))
+    frontend_json_path = Path("/Users/ntagent/dev/northstar/articleai/frontend/src/titlePromptLabData.json")
+    serialized = json.dumps(report, indent=2)
+    json_path.write_text(serialized)
+    frontend_json_path.write_text(serialized)
 
     lines = [
         "# Title Prompt Experiments",
@@ -332,6 +335,7 @@ def main() -> None:
     md_path.write_text("\n".join(lines))
     print(f"Wrote {json_path}")
     print(f"Wrote {md_path}")
+    print(f"Wrote {frontend_json_path}")
 
 
 if __name__ == "__main__":

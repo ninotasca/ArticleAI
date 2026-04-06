@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import reportData from '../titlePromptLabData.json';
 
 interface ExperimentRow {
   articleId: number;
@@ -22,32 +23,7 @@ interface ExperimentReport {
 }
 
 export function TitlePromptLab() {
-  const [report, setReport] = useState<ExperimentReport | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch('/api/experiments/title-prompts/latest.json')
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`Failed to load report: ${res.status}`);
-        return res.json();
-      })
-      .then((data) => setReport(data))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load report'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return <div className="card">Loading title prompt lab…</div>;
-  }
-
-  if (error) {
-    return <div className="card">Error loading title prompt lab: {error}</div>;
-  }
-
-  if (!report) {
-    return <div className="card">No report found.</div>;
-  }
+  const report = useMemo(() => reportData as ExperimentReport, []);
 
   return (
     <div className="prompt-manager">
