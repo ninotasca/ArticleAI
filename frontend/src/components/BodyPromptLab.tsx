@@ -127,42 +127,58 @@ export function BodyPromptLab() {
       </div>
 
       <div className="card" style={{ marginTop: '1rem' }}>
-        <h3>Summary & Ranking</h3>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          Ranked from strongest default candidate to weakest based on usefulness for experienced editors.
-        </p>
+        <details>
+          <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '1.05rem' }}>Summary & Ranking</summary>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '0.75rem' }}>
+            Ranked from strongest default candidate to weakest based on usefulness for experienced editors.
+          </p>
 
-        <div style={{ display: 'grid', gap: '1rem' }}>
-          {rankedVariants.map((variant) => (
-            <div key={`summary-${variant.slug}`} style={summaryCardStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-                <div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>Rank #{variant.rank}</div>
-                  <h4 style={{ margin: 0 }}>{variant.label}</h4>
-                </div>
-                <a href={`#body-variant-${variant.slug}`} style={{ fontWeight: 600 }}>Jump to full results ↓</a>
-              </div>
-
-              <div style={{ marginTop: '0.75rem' }}>
-                <div><strong>What I like:</strong> {variant.like}</div>
-                <div style={{ marginTop: '0.35rem' }}><strong>What I dislike:</strong> {variant.dislike}</div>
-              </div>
-
-              {variant.example && (
-                <div style={{ marginTop: '0.85rem', padding: '0.85rem', background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                  <div style={{ marginBottom: '0.4rem' }}><strong>Example Article:</strong> {variant.example.originalTitle}</div>
-                  <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', lineHeight: 1.5 }}>
-                    {variant.example.analysis}
-                  </pre>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+          <div style={{ overflowX: 'auto', marginTop: '0.75rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Rank</th>
+                  <th style={thStyle}>Prompt</th>
+                  <th style={thStyle}>What I Like</th>
+                  <th style={thStyle}>What I Dislike</th>
+                  <th style={thStyle}>Example</th>
+                  <th style={thStyle}>View</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rankedVariants.map((variant) => (
+                  <tr key={`summary-${variant.slug}`}>
+                    <td style={tdStyle}>#{variant.rank}</td>
+                    <td style={tdStyle}>
+                      <div style={{ fontWeight: 700 }}>{variant.label}</div>
+                      <details style={{ marginTop: '0.5rem' }}>
+                        <summary style={{ cursor: 'pointer' }}>Show prompt</summary>
+                        <pre style={summaryPromptStyle}>{variant.instructions}</pre>
+                      </details>
+                    </td>
+                    <td style={tdStyle}>{variant.like}</td>
+                    <td style={tdStyle}>{variant.dislike}</td>
+                    <td style={tdStyle}>
+                      {variant.example ? (
+                        <div>
+                          <div style={{ fontWeight: 600, marginBottom: '0.4rem' }}>{variant.example.originalTitle}</div>
+                          <pre style={summaryExampleStyle}>{variant.example.analysis}</pre>
+                        </div>
+                      ) : '—'}
+                    </td>
+                    <td style={tdStyle}>
+                      <a href={`#body-variant-${variant.slug}`} style={{ fontWeight: 600 }}>Full section ↓</a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
       </div>
 
       {rankedVariants.map((variant) => (
-        <div id={`body-variant-${variant.slug}`} key={variant.slug} className="card" style={{ marginTop: '1rem', scrollMarginTop: '1rem' }}>
+        <div id={`body-variant-${variant.slug}`} key={variant.slug} className="card" style={{ marginTop: '1rem', scrollMarginTop: '1rem', background: '#fcfcfd', border: '1px solid #d8dee8', boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>Rank #{variant.rank}</div>
@@ -243,9 +259,27 @@ const tdStyle: React.CSSProperties = {
   verticalAlign: 'top',
 };
 
-const summaryCardStyle: React.CSSProperties = {
+const summaryPromptStyle: React.CSSProperties = {
+  marginTop: '0.5rem',
+  marginBottom: 0,
+  padding: '0.75rem',
+  background: '#f8fafc',
   border: '1px solid var(--border)',
-  borderRadius: '10px',
-  padding: '1rem',
-  background: '#fff',
+  borderRadius: '6px',
+  whiteSpace: 'pre-wrap',
+  fontSize: '0.85rem',
+  lineHeight: 1.45,
+};
+
+const summaryExampleStyle: React.CSSProperties = {
+  margin: 0,
+  whiteSpace: 'pre-wrap',
+  fontFamily: 'inherit',
+  lineHeight: 1.45,
+  maxHeight: '14rem',
+  overflow: 'auto',
+  background: '#f8fafc',
+  padding: '0.75rem',
+  borderRadius: '6px',
+  border: '1px solid var(--border)',
 };
