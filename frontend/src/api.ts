@@ -36,7 +36,7 @@ export async function fetchArticles(
 
 export async function runComparison(
   prompts: Prompt[],
-  articleIds: string[]
+  articleIds: number[]
 ): Promise<ComparisonResult> {
   const res = await fetch(`${API_BASE}/compare`, {
     method: 'POST',
