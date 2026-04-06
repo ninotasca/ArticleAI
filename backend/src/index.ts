@@ -18,16 +18,10 @@ const repoRoot = path.resolve(__dirname, '..', '..', '..');
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use(
-  '/api/experiments',
-  express.static(path.join(repoRoot, 'experiments'), {
-    setHeaders: (res, filePath) => {
-      if (filePath.endsWith('.json')) {
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      }
-    },
-  })
-);
+
+app.get('/api/experiments/title-prompts/latest.json', (_req, res) => {
+  res.sendFile(path.join(repoRoot, 'experiments', 'title-prompts', 'latest.json'));
+});
 
 // Routes
 app.use('/api/articles', articlesRouter);
