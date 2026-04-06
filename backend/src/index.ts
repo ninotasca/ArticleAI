@@ -14,7 +14,7 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '3001');
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const repoRoot = path.resolve(__dirname, '..', '..');
+const repoRoot = path.resolve(__dirname, '..', '..', '..');
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
