@@ -27,7 +27,7 @@ export function TitlePromptLab() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/experiments/title-prompts/latest.json')
+    fetch('/api/experiments/title-prompts/latest.json')
       .then(async (res) => {
         if (!res.ok) throw new Error(`Failed to load report: ${res.status}`);
         return res.json();
