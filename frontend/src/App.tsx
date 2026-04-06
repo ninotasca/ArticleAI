@@ -8,10 +8,11 @@ import { DirectTest } from './components/DirectTest';
 import { SimulateArticle } from './components/SimulateArticle';
 import { Settings } from './components/Settings';
 import { TitlePromptLab } from './components/TitlePromptLab';
+import { BodyPromptLab } from './components/BodyPromptLab';
 import { healthCheck, fetchPrompts, fetchPersonas } from './api';
 import type { Prompt, Persona, ComparisonResult } from './types';
 
-type Tab = 'builder' | 'prompts' | 'personas' | 'single-test' | 'compare' | 'results' | 'settings' | 'simulate' | 'title-lab';
+type Tab = 'builder' | 'prompts' | 'personas' | 'single-test' | 'compare' | 'results' | 'settings' | 'simulate' | 'title-lab' | 'body-lab';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('builder');
@@ -163,7 +164,7 @@ function App() {
           </div>
         </div>
 
-        <div className={`nav-group ${activeTab === 'title-lab' ? 'active' : ''}`}>
+        <div className={`nav-group ${['title-lab', 'body-lab'].includes(activeTab) ? 'active' : ''}`}>
           <span className="nav-group-label">Labs</span>
           <div className="nav-group-items">
             <button
@@ -171,6 +172,12 @@ function App() {
               onClick={() => setActiveTab('title-lab')}
             >
               Title Prompt Lab
+            </button>
+            <button
+              className={activeTab === 'body-lab' ? 'active' : ''}
+              onClick={() => setActiveTab('body-lab')}
+            >
+              Body Prompt Lab
             </button>
           </div>
         </div>
@@ -208,6 +215,7 @@ function App() {
         {activeTab === 'single-test' && <DirectTest />}
         {activeTab === 'simulate' && <SimulateArticle />}
         {activeTab === 'title-lab' && <TitlePromptLab />}
+        {activeTab === 'body-lab' && <BodyPromptLab />}
         {activeTab === 'settings' && <Settings health={health} />}
       </main>
     </div>
