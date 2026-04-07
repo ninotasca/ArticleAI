@@ -28,6 +28,22 @@ const exampleAnalysis = (() => {
 
 const variants: Variant[] = [
   {
+    id: 'nino-edits',
+    name: 'Nino Edits',
+    family: 'nino',
+    badge: 'Focused direction',
+    scoreType: 'multi',
+    verdict: 'yellow',
+    rationale: 'Built directly from Nino’s notes: purple AI bubble, verdict pills, traffic-light chips, collapsible lower half, tighter spacing, and a better ask-for-more workflow.',
+    notes: ['Worth revisiting', 'Current title is solid, but a more explicit labor-agreement framing would improve search clarity and trade specificity.'],
+    suggestions: [
+      'Air Canada and Pilots Union Reach Tentative Labor Agreement',
+      'Tentative Labor Agreement Reached Between Air Canada and Pilots Union',
+    ],
+    canPromptMore: true,
+    hasDropdown: true,
+  },
+  {
     id: 'v1',
     name: 'Compact verdict bar',
     family: 'minimal',
@@ -188,10 +204,12 @@ const variants: Variant[] = [
 
 export function TitleSuggestionBoxLab() {
   const [activeTitle, setActiveTitle] = useState(exampleAnalysis.title);
-  const [selectedVariantId, setSelectedVariantId] = useState('v2');
+  const [selectedVariantId, setSelectedVariantId] = useState('nino-edits');
   const [generatedByVariant, setGeneratedByVariant] = useState<Record<string, string[]>>({});
   const [toneByVariant, setToneByVariant] = useState<Record<string, string>>({});
   const [promptByVariant, setPromptByVariant] = useState<Record<string, string>>({});
+  const [loadingByVariant, setLoadingByVariant] = useState<Record<string, boolean>>({});
+  const [collapsedByVariant, setCollapsedByVariant] = useState<Record<string, boolean>>({ 'nino-edits': false });
 
   const selectedVariant = useMemo(
     () => variants.find((variant) => variant.id === selectedVariantId) || variants[0],
@@ -201,8 +219,12 @@ export function TitleSuggestionBoxLab() {
   const generateMore = (variant: Variant) => {
     const tone = toneByVariant[variant.id] || 'seo';
     const customPrompt = (promptByVariant[variant.id] || '').trim().toLowerCase();
-    const next = buildGeneratedSuggestions(activeTitle, tone, customPrompt);
-    setGeneratedByVariant((current) => ({ ...current, [variant.id]: next }));
+    setLoadingByVariant((current) => ({ ...current, [variant.id]: true }));
+    window.setTimeout(() => {
+      const next = buildGeneratedSuggestions(activeTitle, tone, customPrompt);
+      setGeneratedByVariant((current) => ({ ...current, [variant.id]: [...(current[variant.id] || []), ...next] }));
+      setLoadingByVariant((current) => ({ ...current, [variant.id]: false }));
+    }, 1200);
   };
 
   return (
@@ -255,9 +277,12 @@ export function TitleSuggestionBoxLab() {
             generatedByVariant[selectedVariant.id] || [],
             toneByVariant[selectedVariant.id] || 'seo',
             promptByVariant[selectedVariant.id] || '',
+            loadingByVariant[selectedVariant.id] || false,
+            collapsedByVariant[selectedVariant.id] || false,
             (value) => setToneByVariant((current) => ({ ...current, [selectedVariant.id]: value })),
             (value) => setPromptByVariant((current) => ({ ...current, [selectedVariant.id]: value })),
-            () => generateMore(selectedVariant)
+            () => generateMore(selectedVariant),
+            () => setCollapsedByVariant((current) => ({ ...current, [selectedVariant.id]: !current[selectedVariant.id] }))
           )}
         </div>
       </div>
@@ -282,14 +307,17 @@ export function TitleSuggestionBoxLab() {
                 <input className="tsb-input" value={exampleAnalysis.title} readOnly />
                 {renderVariant(
                   variant,
-                  exampleAnalysis.title,
-                  () => {},
+                  variant.id === 'nino-edits' ? activeTitle : exampleAnalysis.title,
+                  variant.id === 'nino-edits' ? setActiveTitle : () => {},
                   generatedByVariant[variant.id] || [],
                   toneByVariant[variant.id] || 'seo',
                   promptByVariant[variant.id] || '',
+                  loadingByVariant[variant.id] || false,
+                  collapsedByVariant[variant.id] || false,
                   (value) => setToneByVariant((current) => ({ ...current, [variant.id]: value })),
                   (value) => setPromptByVariant((current) => ({ ...current, [variant.id]: value })),
-                  () => generateMore(variant)
+                  () => generateMore(variant),
+                  () => setCollapsedByVariant((current) => ({ ...current, [variant.id]: !current[variant.id] }))
                 )}
               </div>
             </div>
@@ -307,35 +335,50 @@ function renderVariant(
   generatedSuggestions: string[],
   selectedTone: string,
   customPrompt: string,
+  isLoading: boolean,
+  isCollapsed: boolean,
   onToneChange: (value: string) => void,
   onPromptChange: (value: string) => void,
-  onGenerateMore: () => void
+  onGenerateMore: () => void,
+  onToggleCollapsed: () => void
 ) {
   const accent = getAccent(variant.verdict);
+  const allSuggestions = [...variant.suggestions, ...generatedSuggestions];
+
   return (
-    <div style={{ marginTop: '0.75rem', borderRadius: '14px', border: `1px solid ${accent.border}`, background: accent.bg, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.9rem 1rem', borderBottom: `1px solid ${accent.border}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.2rem 0.55rem', borderRadius: '999px', background: '#fff', border: `1px solid ${accent.border}`, fontSize: '0.78rem', fontWeight: 700, color: accent.text }}>
-            <span>{accent.icon}</span>
-            <span>{accent.label}</span>
-          </span>
-          <span style={{ fontSize: '0.82rem', color: accent.text, fontWeight: 600 }}>{variant.badge}</span>
+    <div style={{ marginTop: '0.75rem', borderRadius: '14px', border: '1px solid #c4b5fd', background: '#f5f3ff', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start', padding: '0.8rem 0.95rem', borderBottom: isCollapsed ? 'none' : '1px solid #ddd6fe' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <span style={{ ...verdictPillStyle('#16a34a', '#f0fdf4'), opacity: variant.verdict === 'green' ? 1 : 0.55 }}>Good to go</span>
+          <span style={{ ...verdictPillStyle('#a16207', '#fef3c7'), opacity: variant.verdict === 'yellow' ? 1 : 0.55 }}>Worth Revisiting</span>
+          <span style={{ ...verdictPillStyle('#b91c1c', '#fef2f2'), opacity: variant.verdict === 'red' ? 1 : 0.55 }}>Needs Work</span>
         </div>
-        {renderScore(variant)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+          {renderSignalChip('SEO', 'yellow')}
+          {renderSignalChip('Clarity', variant.verdict === 'red' ? 'red' : 'green')}
+          {renderSignalChip('Specificity', variant.verdict === 'green' ? 'green' : 'yellow')}
+        </div>
       </div>
 
-      <div style={{ padding: '1rem' }}>
-        <div style={{ color: '#312e81', fontWeight: 700, marginBottom: '0.45rem' }}>AI take</div>
-        <div style={{ color: '#4338ca', fontSize: '0.93rem', lineHeight: 1.55 }}>{variant.notes[0]}</div>
-        {variant.notes[1] && <div style={{ color: '#5b21b6', fontSize: '0.84rem', marginTop: '0.45rem', lineHeight: 1.5 }}>{variant.notes[1]}</div>}
+      <div style={{ padding: '0.8rem 0.95rem' }}>
+        <div style={{ color: '#4c1d95', fontSize: '0.9rem', lineHeight: 1.45 }}>{variant.notes.join(' ')}</div>
 
-        <div style={{ marginTop: '0.9rem', display: 'grid', gap: '0.65rem' }}>
-          {[...variant.suggestions, ...generatedSuggestions].map((suggestion, index) => (
-            <div key={`${variant.id}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start', padding: '0.75rem 0.85rem', borderRadius: '10px', background: '#fff', border: `1px solid ${accent.border}` }}>
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          style={{ marginTop: '0.6rem', background: 'none', border: 'none', padding: 0, color: '#6d28d9', fontWeight: 700, cursor: 'pointer', fontSize: '0.82rem' }}
+        >
+          {isCollapsed ? 'Show details and suggestions' : 'Hide details and suggestions'}
+        </button>
+
+        {!isCollapsed && (
+          <>
+            <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.55rem' }}>
+          {allSuggestions.map((suggestion, index) => (
+            <div key={`${variant.id}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.65rem', alignItems: 'flex-start', padding: '0.65rem 0.75rem', borderRadius: '10px', background: '#fff', border: '1px solid #ddd6fe' }}>
               <div>
                 <div style={{ fontWeight: 700, color: '#312e81' }}>{suggestion}</div>
-                <div style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '0.2rem' }}>{suggestion === 'Keep current title' ? 'No better alternative needed here.' : title === suggestion ? 'This matches the current field.' : 'Candidate title generated by the AI.'}</div>
+                <div style={{ color: '#64748b', fontSize: '0.77rem', marginTop: '0.18rem', lineHeight: 1.4 }}>{getSuggestionWhy(index, suggestion, title)}</div>
               </div>
               <button type="button" className="btn-primary" onClick={() => setActiveTitle(suggestion === 'Keep current title' ? title : suggestion)}>
                 {suggestion === 'Keep current title' ? 'Keep' : 'Use title'}
@@ -357,17 +400,26 @@ function renderVariant(
                 </select>
               )}
               {variant.canPromptMore && (
-                <input
-                  type="text"
+                <textarea
                   placeholder="Ask for another direction…"
-                  style={{ flex: '1 1 260px' }}
+                  style={{ flex: '1 1 320px', minHeight: '72px', resize: 'vertical' }}
                   value={customPrompt}
                   onChange={(e) => onPromptChange(e.target.value)}
                 />
               )}
-              <button type="button" className="btn-secondary" onClick={onGenerateMore}>Generate more</button>
+              <button type="button" className="btn-secondary" onClick={onGenerateMore} disabled={isLoading}>
+                {isLoading ? 'Generating…' : 'Generate more'}
+              </button>
             </div>
+            {isLoading && (
+              <div style={{ marginTop: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6d28d9', fontSize: '0.82rem' }}>
+                <span className="spinner" style={{ width: '14px', height: '14px' }} />
+                <span>Thinking through more title options…</span>
+              </div>
+            )}
           </div>
+        )}
+          </>
         )}
       </div>
     </div>
@@ -401,6 +453,18 @@ function getAccent(verdict: Variant['verdict']) {
   if (verdict === 'green') return { bg: '#f0fdf4', border: '#86efac', text: '#166534', icon: '🟢', label: 'Good to go' };
   if (verdict === 'red') return { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', icon: '🔴', label: 'Needs work' };
   return { bg: '#fffbeb', border: '#fcd34d', text: '#92400e', icon: '🟡', label: 'Worth revisiting' };
+}
+
+function getSuggestionWhy(index: number, suggestion: string, currentTitle: string): string {
+  if (suggestion === 'Keep current title') return 'No stronger change appears necessary.';
+  if (suggestion === currentTitle) return 'This keeps the current wording in the field.';
+  const reasons = [
+    'Makes the main subject clearer and strengthens search intent.',
+    'Feels more explicit and trade-friendly without getting buzzy.',
+    'Surfaces the labor-agreement angle faster for busy readers.',
+    'Improves specificity while keeping the editorial tone professional.',
+  ];
+  return reasons[index % reasons.length];
 }
 
 function buildGeneratedSuggestions(currentTitle: string, tone: string, customPrompt: string): string[] {
@@ -445,6 +509,35 @@ function buildGeneratedSuggestions(currentTitle: string, tone: string, customPro
   }
 
   return suggestions;
+}
+
+function renderSignalChip(label: string, color: 'green' | 'yellow' | 'red') {
+  const palette = color === 'green'
+    ? { bg: '#f0fdf4', text: '#166534', dot: '#22c55e' }
+    : color === 'red'
+      ? { bg: '#fef2f2', text: '#991b1b', dot: '#ef4444' }
+      : { bg: '#fffbeb', text: '#92400e', dot: '#f59e0b' };
+
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.22rem 0.5rem', borderRadius: '999px', background: '#fff', border: '1px solid #ddd6fe', fontSize: '0.76rem', fontWeight: 700, color: '#5b21b6' }}>
+      <span style={{ width: '8px', height: '8px', borderRadius: '999px', background: palette.dot, display: 'inline-block' }} />
+      <span>{label}</span>
+    </span>
+  );
+}
+
+function verdictPillStyle(text: string, bg: string): React.CSSProperties {
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '0.25rem 0.6rem',
+    borderRadius: '999px',
+    background: bg,
+    border: '1px solid rgba(15,23,42,0.08)',
+    fontSize: '0.77rem',
+    fontWeight: 700,
+    color: text,
+  };
 }
 
 const chipStyle: React.CSSProperties = {
