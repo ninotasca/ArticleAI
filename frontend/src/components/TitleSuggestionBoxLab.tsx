@@ -189,11 +189,21 @@ const variants: Variant[] = [
 export function TitleSuggestionBoxLab() {
   const [activeTitle, setActiveTitle] = useState(exampleAnalysis.title);
   const [selectedVariantId, setSelectedVariantId] = useState('v2');
+  const [generatedByVariant, setGeneratedByVariant] = useState<Record<string, string[]>>({});
+  const [toneByVariant, setToneByVariant] = useState<Record<string, string>>({});
+  const [promptByVariant, setPromptByVariant] = useState<Record<string, string>>({});
 
   const selectedVariant = useMemo(
     () => variants.find((variant) => variant.id === selectedVariantId) || variants[0],
     [selectedVariantId]
   );
+
+  const generateMore = (variant: Variant) => {
+    const tone = toneByVariant[variant.id] || 'seo';
+    const customPrompt = (promptByVariant[variant.id] || '').trim().toLowerCase();
+    const next = buildGeneratedSuggestions(activeTitle, tone, customPrompt);
+    setGeneratedByVariant((current) => ({ ...current, [variant.id]: next }));
+  };
 
   return (
     <div className="prompt-manager">
@@ -238,7 +248,17 @@ export function TitleSuggestionBoxLab() {
         <div className="tsb-shell" style={{ marginTop: '1rem' }}>
           <label className="tsb-label">Headline</label>
           <input className="tsb-input" value={activeTitle} readOnly />
-          {renderVariant(selectedVariant, activeTitle, setActiveTitle)}
+          {renderVariant(
+            selectedVariant,
+            activeTitle,
+            setActiveTitle,
+            generatedByVariant[selectedVariant.id] || [],
+            toneByVariant[selectedVariant.id] || 'seo',
+            promptByVariant[selectedVariant.id] || '',
+            (value) => setToneByVariant((current) => ({ ...current, [selectedVariant.id]: value })),
+            (value) => setPromptByVariant((current) => ({ ...current, [selectedVariant.id]: value })),
+            () => generateMore(selectedVariant)
+          )}
         </div>
       </div>
 
@@ -260,7 +280,17 @@ export function TitleSuggestionBoxLab() {
               <div className="tsb-shell" style={{ marginTop: '0.9rem' }}>
                 <label className="tsb-label">Headline</label>
                 <input className="tsb-input" value={exampleAnalysis.title} readOnly />
-                {renderVariant(variant, exampleAnalysis.title, () => {})}
+                {renderVariant(
+                  variant,
+                  exampleAnalysis.title,
+                  () => {},
+                  generatedByVariant[variant.id] || [],
+                  toneByVariant[variant.id] || 'seo',
+                  promptByVariant[variant.id] || '',
+                  (value) => setToneByVariant((current) => ({ ...current, [variant.id]: value })),
+                  (value) => setPromptByVariant((current) => ({ ...current, [variant.id]: value })),
+                  () => generateMore(variant)
+                )}
               </div>
             </div>
           ))}
@@ -270,7 +300,17 @@ export function TitleSuggestionBoxLab() {
   );
 }
 
-function renderVariant(variant: Variant, title: string, setActiveTitle: (title: string) => void) {
+function renderVariant(
+  variant: Variant,
+  title: string,
+  setActiveTitle: (title: string) => void,
+  generatedSuggestions: string[],
+  selectedTone: string,
+  customPrompt: string,
+  onToneChange: (value: string) => void,
+  onPromptChange: (value: string) => void,
+  onGenerateMore: () => void
+) {
   const accent = getAccent(variant.verdict);
   return (
     <div style={{ marginTop: '0.75rem', borderRadius: '14px', border: `1px solid ${accent.border}`, background: accent.bg, overflow: 'hidden' }}>
@@ -291,7 +331,7 @@ function renderVariant(variant: Variant, title: string, setActiveTitle: (title: 
         {variant.notes[1] && <div style={{ color: '#5b21b6', fontSize: '0.84rem', marginTop: '0.45rem', lineHeight: 1.5 }}>{variant.notes[1]}</div>}
 
         <div style={{ marginTop: '0.9rem', display: 'grid', gap: '0.65rem' }}>
-          {variant.suggestions.map((suggestion, index) => (
+          {[...variant.suggestions, ...generatedSuggestions].map((suggestion, index) => (
             <div key={`${variant.id}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start', padding: '0.75rem 0.85rem', borderRadius: '10px', background: '#fff', border: `1px solid ${accent.border}` }}>
               <div>
                 <div style={{ fontWeight: 700, color: '#312e81' }}>{suggestion}</div>
@@ -309,7 +349,7 @@ function renderVariant(variant: Variant, title: string, setActiveTitle: (title: 
             <div style={{ fontWeight: 700, color: '#312e81', marginBottom: '0.55rem' }}>Ask for more</div>
             <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
               {variant.hasDropdown && (
-                <select style={{ maxWidth: '220px' }} defaultValue="seo">
+                <select style={{ maxWidth: '220px' }} value={selectedTone} onChange={(e) => onToneChange(e.target.value)}>
                   <option value="seo">More SEO-friendly</option>
                   <option value="buzzy">More buzzy</option>
                   <option value="restrained">More restrained</option>
@@ -317,9 +357,15 @@ function renderVariant(variant: Variant, title: string, setActiveTitle: (title: 
                 </select>
               )}
               {variant.canPromptMore && (
-                <input type="text" placeholder="Ask for another direction…" style={{ flex: '1 1 260px' }} readOnly />
+                <input
+                  type="text"
+                  placeholder="Ask for another direction…"
+                  style={{ flex: '1 1 260px' }}
+                  value={customPrompt}
+                  onChange={(e) => onPromptChange(e.target.value)}
+                />
               )}
-              <button type="button" className="btn-secondary">Generate more</button>
+              <button type="button" className="btn-secondary" onClick={onGenerateMore}>Generate more</button>
             </div>
           </div>
         )}
@@ -355,6 +401,50 @@ function getAccent(verdict: Variant['verdict']) {
   if (verdict === 'green') return { bg: '#f0fdf4', border: '#86efac', text: '#166534', icon: '🟢', label: 'Good to go' };
   if (verdict === 'red') return { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', icon: '🔴', label: 'Needs work' };
   return { bg: '#fffbeb', border: '#fcd34d', text: '#92400e', icon: '🟡', label: 'Worth revisiting' };
+}
+
+function buildGeneratedSuggestions(currentTitle: string, tone: string, customPrompt: string): string[] {
+  const subject = currentTitle.replace(/["']/g, '').trim();
+
+  const seo = [
+    `${subject} Tentative Labor Agreement Explained`,
+    `Air Canada Pilots Union Reaches Tentative Labor Agreement`,
+  ];
+  const buzzy = [
+    `Air Canada and Pilots Edge Toward Labor Peace with Tentative Deal`,
+    `Tentative Deal Marks a Key Labor Moment for Air Canada and Its Pilots`,
+  ];
+  const restrained = [
+    `${subject} with a Sharper Labor Angle`,
+    `Air Canada and Pilots Union Reach Tentative Labor Agreement`,
+  ];
+  const trade = [
+    `Air Canada, Pilots Union Reach Tentative Labor Agreement`,
+    `Tentative Labor Agreement Reached Between Air Canada and Pilots Union`,
+  ];
+
+  let suggestions = seo;
+  if (tone === 'buzzy') suggestions = buzzy;
+  else if (tone === 'restrained') suggestions = restrained;
+  else if (tone === 'trade') suggestions = trade;
+
+  if (customPrompt.includes('short')) {
+    suggestions = suggestions.map((s) => s.replace('Tentative ', '').slice(0, 68));
+  }
+  if (customPrompt.includes('seo')) {
+    suggestions = seo;
+  }
+  if (customPrompt.includes('buzzy')) {
+    suggestions = buzzy;
+  }
+  if (customPrompt.includes('trade')) {
+    suggestions = trade;
+  }
+  if (customPrompt.includes('restrained') || customPrompt.includes('conservative')) {
+    suggestions = restrained;
+  }
+
+  return suggestions;
 }
 
 const chipStyle: React.CSSProperties = {
