@@ -9,10 +9,11 @@ import { SimulateArticle } from './components/SimulateArticle';
 import { Settings } from './components/Settings';
 import { TitlePromptLab } from './components/TitlePromptLab';
 import { BodyPromptLab } from './components/BodyPromptLab';
+import { TitleSuggestionBoxLab } from './components/TitleSuggestionBoxLab';
 import { healthCheck, fetchPrompts, fetchPersonas } from './api';
 import type { Prompt, Persona, ComparisonResult } from './types';
 
-type Tab = 'builder' | 'prompts' | 'personas' | 'single-test' | 'compare' | 'results' | 'settings' | 'simulate' | 'title-lab' | 'body-lab';
+type Tab = 'builder' | 'prompts' | 'personas' | 'single-test' | 'compare' | 'results' | 'settings' | 'simulate' | 'title-lab' | 'body-lab' | 'title-ui-lab';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('builder');
@@ -164,7 +165,7 @@ function App() {
           </div>
         </div>
 
-        <div className={`nav-group ${['title-lab', 'body-lab'].includes(activeTab) ? 'active' : ''}`}>
+        <div className={`nav-group ${['title-lab', 'body-lab', 'title-ui-lab'].includes(activeTab) ? 'active' : ''}`}>
           <span className="nav-group-label">Labs</span>
           <div className="nav-group-items">
             <button
@@ -178,6 +179,12 @@ function App() {
               onClick={() => setActiveTab('body-lab')}
             >
               Body Prompt Lab
+            </button>
+            <button
+              className={activeTab === 'title-ui-lab' ? 'active' : ''}
+              onClick={() => setActiveTab('title-ui-lab')}
+            >
+              Title UI Lab
             </button>
           </div>
         </div>
@@ -216,6 +223,7 @@ function App() {
         {activeTab === 'simulate' && <SimulateArticle />}
         {activeTab === 'title-lab' && <TitlePromptLab />}
         {activeTab === 'body-lab' && <BodyPromptLab />}
+        {activeTab === 'title-ui-lab' && <TitleSuggestionBoxLab />}
         {activeTab === 'settings' && <Settings health={health} />}
       </main>
     </div>
