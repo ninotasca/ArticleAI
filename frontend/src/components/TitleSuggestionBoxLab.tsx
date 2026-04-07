@@ -357,19 +357,20 @@ function renderVariant(
           {renderSignalChip('SEO', 'yellow')}
           {renderSignalChip('Clarity', variant.verdict === 'red' ? 'red' : 'green')}
           {renderSignalChip('Specificity', variant.verdict === 'green' ? 'green' : 'yellow')}
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            style={{ background: 'none', border: 'none', color: '#6d28d9', fontWeight: 700, cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0.15rem 0.2rem' }}
+            aria-label={isCollapsed ? 'Expand details' : 'Collapse details'}
+            title={isCollapsed ? 'Expand details' : 'Collapse details'}
+          >
+            {isCollapsed ? '▾' : '▴'}
+          </button>
         </div>
       </div>
 
       <div style={{ padding: '0.8rem 0.95rem' }}>
-        <div style={{ color: '#4c1d95', fontSize: '0.9rem', lineHeight: 1.45 }}>{variant.notes.join(' ')}</div>
-
-        <button
-          type="button"
-          onClick={onToggleCollapsed}
-          style={{ marginTop: '0.6rem', background: 'none', border: 'none', padding: 0, color: '#6d28d9', fontWeight: 700, cursor: 'pointer', fontSize: '0.82rem' }}
-        >
-          {isCollapsed ? 'Show details and suggestions' : 'Hide details and suggestions'}
-        </button>
+        <div style={{ color: '#4c1d95', fontSize: '0.9rem', lineHeight: 1.45 }}>{variant.notes[1] || variant.notes[0]}</div>
 
         {!isCollapsed && (
           <>
@@ -388,7 +389,7 @@ function renderVariant(
         </div>
 
         {(variant.canPromptMore || variant.hasDropdown) && (
-          <div style={{ marginTop: '0.95rem', paddingTop: '0.95rem', borderTop: `1px dashed ${accent.border}` }}>
+          <div style={{ marginTop: '0.95rem', paddingTop: '0.95rem', borderTop: '2px solid #6d28d9' }}>
             <div style={{ fontWeight: 700, color: '#312e81', marginBottom: '0.55rem' }}>Ask for more</div>
             <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
               {variant.hasDropdown && (
@@ -513,14 +514,13 @@ function buildGeneratedSuggestions(currentTitle: string, tone: string, customPro
 
 function renderSignalChip(label: string, color: 'green' | 'yellow' | 'red') {
   const palette = color === 'green'
-    ? { bg: '#f0fdf4', text: '#166534', dot: '#22c55e' }
+    ? { bg: '#f0fdf4', text: '#166534', border: '#86efac' }
     : color === 'red'
-      ? { bg: '#fef2f2', text: '#991b1b', dot: '#ef4444' }
-      : { bg: '#fffbeb', text: '#92400e', dot: '#f59e0b' };
+      ? { bg: '#fef2f2', text: '#991b1b', border: '#fca5a5' }
+      : { bg: '#fffbeb', text: '#92400e', border: '#fcd34d' };
 
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.22rem 0.5rem', borderRadius: '999px', background: '#fff', border: '1px solid #ddd6fe', fontSize: '0.76rem', fontWeight: 700, color: '#5b21b6' }}>
-      <span style={{ width: '8px', height: '8px', borderRadius: '999px', background: palette.dot, display: 'inline-block' }} />
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.24rem 0.52rem', borderRadius: '999px', background: palette.bg, border: `1px solid ${palette.border}`, fontSize: '0.76rem', fontWeight: 700, color: palette.text }}>
       <span>{label}</span>
     </span>
   );
