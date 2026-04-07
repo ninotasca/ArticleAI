@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchArticleSample, fetchBuiltPrompts, runAiTest } from '../api';
-import type { Article, BuiltPrompt } from '../types';
+import type { Article, BuiltPrompt, TitleReview } from '../types';
 
-/* ── Types for parsed AI output ── */
 interface Suggestion {
   title: string;
   description: string;
@@ -13,9 +12,8 @@ interface AnalysisResult {
   titleSuggestions: Suggestion[];
   bodyAnalysis: string;
   bodySuggestions: Suggestion[];
+  titleReview: TitleReview | null;
 }
-
-/* ═══ Dynamic Takeover Messages (Appendix A) ═══ */
 
 const MESSAGES_STARTUP = [
   'Warming up the AI...',
@@ -80,7 +78,6 @@ function getAnalyzingMessage(content: string): string {
   return pickRandom(MESSAGES_ANALYZING_TEMPLATES).replace('[CONTENT]', content);
 }
 
-/** Message schedule: startup → title → body → metadata → finishing */
 function buildMessageSchedule(): Array<{ message: string; delay: number }> {
   return [
     { message: pickRandom(MESSAGES_STARTUP), delay: 0 },
@@ -93,52 +90,178 @@ function buildMessageSchedule(): Array<{ message: string; delay: number }> {
 
 const ESTIMATED_SECONDS = 20;
 
-/* ── Parse AI response into structured suggestions ── */
+function normalizeTitleReview(parsed: any): TitleReview | null {
+  const review = parsed?.titleReview;
+  if (!review || !review.overallStatus) return null;
+
+  return {
+    overallStatus: review.overallStatus,
+    summaryReason: review.summaryReason || '',
+    chipRatings: {
+      seo: review.chipRatings?.seo || 'yellow',
+      clarity: review.chipRatings?.clarity || 'yellow',
+      specificity: review.chipRatings?.specificity || 'yellow',
+    },
+    collapsed: {
+      defaultCollapsed: Boolean(review.collapsed?.defaultCollapsed),
+    },
+    detail: {
+      editorNote: review.detail?.editorNote || '',
+      whyThisMatters: review.detail?.whyThisMatters ?? null,
+    },
+    suggestedTitles: Array.isArray(review.suggestedTitles)
+      ? review.suggestedTitles.map((item: any) => ({
+          title: item.title || '',
+          whyItWorks: item.whyItWorks || '',
+          kind: item.kind || 'editorial',
+          recommended: Boolean(item.recommended),
+        }))
+      : [],
+    followUpControls: {
+      allowGenerateMore: review.followUpControls?.allowGenerateMore !== false,
+      suggestedModes: review.followUpControls?.suggestedModes || ['seo', 'buzzy', 'restrained', 'trade'],
+      placeholderPrompt: review.followUpControls?.placeholderPrompt || 'Ask for another direction...',
+    },
+  };
+}
+
 function parseAiOutput(raw: string): AnalysisResult {
   const fallback: AnalysisResult = {
     titleAnalysis: raw,
     titleSuggestions: [],
     bodyAnalysis: '',
     bodySuggestions: [],
+    titleReview: null,
   };
 
   try {
-    // Strip markdown code fences if present
     let jsonStr = raw.trim();
     const codeBlock = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (codeBlock) jsonStr = codeBlock[1].trim();
 
     const parsed = JSON.parse(jsonStr);
+    const titleReview = normalizeTitleReview(parsed);
 
     return {
       titleAnalysis:
-        parsed.title?.analysis ?? parsed.titleAnalysis ?? parsed.headline?.analysis ?? '',
+        parsed.title?.analysis ?? parsed.titleAnalysis ?? parsed.headline?.analysis ?? titleReview?.detail.editorNote ?? '',
       titleSuggestions: (
         parsed.title?.suggestions ??
         parsed.titleSuggestions ??
         parsed.headline?.suggestions ??
+        titleReview?.suggestedTitles?.map((s) => ({ title: s.title, description: s.whyItWorks })) ??
         []
       ).map((s: Record<string, string>) => ({
         title: s.title || s.suggestion || s.name || String(s),
         description: s.description || s.reason || s.explanation || '',
       })),
-      bodyAnalysis:
-        parsed.body?.analysis ?? parsed.bodyAnalysis ?? '',
+      bodyAnalysis: parsed.body?.analysis ?? parsed.bodyAnalysis ?? '',
       bodySuggestions: (
-        parsed.body?.suggestions ??
-        parsed.bodySuggestions ??
-        []
+        parsed.body?.suggestions ?? parsed.bodySuggestions ?? []
       ).map((s: Record<string, string>) => ({
         title: s.title || s.suggestion || s.name || String(s),
         description: s.description || s.reason || s.explanation || '',
       })),
+      titleReview,
     };
   } catch {
     return fallback;
   }
 }
 
-/* ════════════════════════════════════════════════════════ */
+function buildTopPickPrompt(basePrompt: string): string {
+  return `${basePrompt}
+
+IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, no extra text).
+
+Use this exact JSON structure:
+{
+  "titleReview": {
+    "overallStatus": "good_to_go | worth_revisiting | needs_work",
+    "summaryReason": "One concise sentence explaining the top-line reason.",
+    "chipRatings": {
+      "seo": "green | yellow | red",
+      "clarity": "green | yellow | red",
+      "specificity": "green | yellow | red"
+    },
+    "collapsed": {
+      "defaultCollapsed": false
+    },
+    "detail": {
+      "editorNote": "A short, non-preachy explanation of what is working or what should change.",
+      "whyThisMatters": "Optional short sentence. Use null if not needed."
+    },
+    "suggestedTitles": [
+      {
+        "title": "Suggested title text",
+        "whyItWorks": "One short sentence explaining why this is a strong option.",
+        "kind": "editorial | seo | buzzy | restrained | trade",
+        "recommended": true
+      }
+    ],
+    "followUpControls": {
+      "allowGenerateMore": true,
+      "suggestedModes": ["seo", "buzzy", "restrained", "trade"],
+      "placeholderPrompt": "Ask for another direction..."
+    }
+  },
+  "body": {
+    "analysis": "Your analysis of the article body — what works, what could improve",
+    "suggestions": [
+      { "title": "Short suggestion name", "description": "Details of what to improve and why" }
+    ]
+  }
+}`;
+}
+
+function buildTopPickFollowUpPrompt(article: Article, review: TitleReview, mode: string, userPrompt: string): string {
+  return `You are generating additional article title options for a B2B travel industry editor.
+
+Current title: ${article.title}
+Deck: ${article.deck}
+Body: ${article.body}
+
+Existing review summary: ${review.summaryReason}
+Existing editor note: ${review.detail.editorNote}
+Requested direction: ${mode}
+Editor follow-up request: ${userPrompt || 'None'}
+
+Return ONLY valid JSON with this exact structure:
+{
+  "suggestedTitles": [
+    {
+      "title": "Suggested title text",
+      "whyItWorks": "One short sentence explaining why this option is useful.",
+      "kind": "editorial | seo | buzzy | restrained | trade",
+      "recommended": false
+    }
+  ]
+}
+
+Rules:
+- Return 2 to 4 title options.
+- Keep them credible and trade-appropriate.
+- Do not use clickbait.
+- Make the options clearly distinct where possible.
+- Match the requested direction.
+`;
+}
+
+function getStatusAppearance(status: TitleReview['overallStatus']) {
+  if (status === 'good_to_go') {
+    return { label: 'Good to go', bg: '#f0fdf4', text: '#166534', border: '#86efac' };
+  }
+  if (status === 'needs_work') {
+    return { label: 'Needs Work', bg: '#fef2f2', text: '#991b1b', border: '#fca5a5' };
+  }
+  return { label: 'Worth Revisiting', bg: '#fef3c7', text: '#a16207', border: '#fcd34d' };
+}
+
+function getChipAppearance(value: 'green' | 'yellow' | 'red') {
+  if (value === 'green') return { bg: '#f0fdf4', text: '#166534', border: '#86efac' };
+  if (value === 'red') return { bg: '#fef2f2', text: '#991b1b', border: '#fca5a5' };
+  return { bg: '#fef3c7', text: '#a16207', border: '#fcd34d' };
+}
 
 export function SimulateArticle() {
   const [article, setArticle] = useState<Article | null>(null);
@@ -150,8 +273,10 @@ export function SimulateArticle() {
   const [titleExpanded, setTitleExpanded] = useState(true);
   const [bodyExpanded, setBodyExpanded] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [followUpMode, setFollowUpMode] = useState('seo');
+  const [followUpPrompt, setFollowUpPrompt] = useState('');
+  const [followUpLoading, setFollowUpLoading] = useState(false);
 
-  /* Takeover state */
   const [takeoverMessage, setTakeoverMessage] = useState('');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -159,7 +284,6 @@ export function SimulateArticle() {
   const messageTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const elapsedIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  /* ── Load article + built prompts on mount ── */
   useEffect(() => {
     loadRandomArticle();
   }, []);
@@ -178,6 +302,7 @@ export function SimulateArticle() {
     setPhase('editing');
     setAnalysis(null);
     setError(null);
+    setFollowUpPrompt('');
     try {
       const { articles } = await fetchArticleSample(1);
       if (articles.length > 0) setArticle(articles[0]);
@@ -189,7 +314,6 @@ export function SimulateArticle() {
     }
   }
 
-  /** Clean up all takeover timers */
   const cleanupTakeover = useCallback(() => {
     messageTimersRef.current.forEach(clearTimeout);
     messageTimersRef.current = [];
@@ -199,7 +323,6 @@ export function SimulateArticle() {
     }
   }, []);
 
-  /* ── Run analysis with takeover UX ── */
   async function handleAnalyze() {
     if (!article || !selectedPromptId) return;
     const prompt = builtPrompts.find((bp) => bp.id === selectedPromptId);
@@ -211,7 +334,6 @@ export function SimulateArticle() {
     setElapsedSeconds(0);
     setError(null);
 
-    // Start message schedule
     const schedule = buildMessageSchedule();
     setTakeoverMessage(schedule[0].message);
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -223,45 +345,71 @@ export function SimulateArticle() {
     }
     messageTimersRef.current = timers;
 
-    // Elapsed seconds counter
     elapsedIntervalRef.current = setInterval(() => {
       setElapsedSeconds((s) => s + 1);
     }, 1000);
 
     try {
-      const wrappedPrompt = `${prompt.assembledPrompt}
-
-IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, no extra text) using this exact structure:
-{
-  "title": {
-    "analysis": "Your analysis of the article headline — what works, what could improve",
-    "suggestions": [
-      { "title": "Suggested alternative headline", "description": "Brief explanation of why this works better" }
-    ]
-  },
-  "body": {
-    "analysis": "Your analysis of the article body — what works, what could improve",
-    "suggestions": [
-      { "title": "Short suggestion name", "description": "Details of what to improve and why" }
-    ]
-  }
-}`;
-
+      const wrappedPrompt = buildTopPickPrompt(prompt.assembledPrompt);
       const { result } = await runAiTest(wrappedPrompt, article.id);
-
-      if (abortRef.current) return;  // cancelled while waiting
+      if (abortRef.current) return;
 
       cleanupTakeover();
       const parsed = parseAiOutput(result);
       setAnalysis(parsed);
-      setTitleExpanded(true);
+      setTitleExpanded(!(parsed.titleReview?.collapsed.defaultCollapsed ?? false));
       setBodyExpanded(true);
+      setFollowUpMode(parsed.titleReview?.followUpControls.suggestedModes?.[0] || 'seo');
       setPhase('analyzed');
     } catch (err) {
       if (abortRef.current) return;
       cleanupTakeover();
       setError(err instanceof Error ? err.message : 'Analysis failed');
       setPhase('editing');
+    }
+  }
+
+  async function handleGenerateMoreTitles() {
+    if (!article || !analysis?.titleReview) return;
+    setFollowUpLoading(true);
+    setError(null);
+    try {
+      const prompt = buildTopPickFollowUpPrompt(article, analysis.titleReview, followUpMode, followUpPrompt);
+      const { result } = await runAiTest(prompt, article.id);
+      const parsed = parseAiOutput(result);
+      const extra = parsed.titleReview?.suggestedTitles || [];
+      const raw = (() => {
+        try {
+          const obj = JSON.parse(result);
+          return Array.isArray(obj.suggestedTitles) ? obj.suggestedTitles : [];
+        } catch {
+          return [];
+        }
+      })();
+
+      const appended = raw.length > 0
+        ? raw.map((item: any) => ({
+            title: item.title || '',
+            whyItWorks: item.whyItWorks || '',
+            kind: item.kind || followUpMode || 'editorial',
+            recommended: Boolean(item.recommended),
+          }))
+        : extra;
+
+      setAnalysis((current) => {
+        if (!current?.titleReview) return current;
+        return {
+          ...current,
+          titleReview: {
+            ...current.titleReview,
+            suggestedTitles: [...current.titleReview.suggestedTitles, ...appended],
+          },
+        };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate more titles');
+    } finally {
+      setFollowUpLoading(false);
     }
   }
 
@@ -282,12 +430,11 @@ IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, n
 
   const wordCount = article?.body ? article.body.split(/\s+/).filter(Boolean).length : 0;
   const charCount = article?.body ? article.body.length : 0;
-
-  /* ════════════════════════════════════════════════════════ */
+  const titleReview = analysis?.titleReview;
+  const titleStatus = titleReview ? getStatusAppearance(titleReview.overallStatus) : null;
 
   return (
     <div className="simulate">
-      {/* ── Controls Bar (above the CMS) ── */}
       <div className="sim-controls">
         <div className="sim-controls-left">
           <div className="form-group" style={{ margin: 0 }}>
@@ -304,21 +451,15 @@ IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, n
             </select>
           </div>
         </div>
-        <button
-          className="btn btn-secondary"
-          onClick={loadRandomArticle}
-          disabled={articleLoading}
-        >
+        <button className="btn btn-secondary" onClick={loadRandomArticle} disabled={articleLoading}>
           {articleLoading ? 'Loading...' : 'Fetch New Article'}
         </button>
       </div>
 
       {error && <div className="sim-error">{error}</div>}
 
-      {/* ── Lantern CMS Simulation ── */}
       {article && !articleLoading && (
         <div className="sim-cms">
-          {/* CMS Header */}
           <div className="sim-cms-header">
             <h2 className="sim-cms-title">Create Article</h2>
             <div className="sim-breadcrumb">
@@ -326,7 +467,6 @@ IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, n
             </div>
           </div>
 
-          {/* Steps Bar */}
           <div className="sim-steps">
             <div className="sim-steps-left">
               <span className="sim-step active">1. Article Content</span>
@@ -338,11 +478,8 @@ IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, n
             </div>
           </div>
 
-          {/* Two-Column Content */}
           <div className="sim-content">
-            {/* ── Left Column ── */}
             <div className="sim-left">
-              {/* Headline */}
               <div className="sim-field">
                 <label>
                   Headline <span className="sim-required">*</span>{' '}
@@ -352,63 +489,120 @@ IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, n
                   type="text"
                   className="sim-input"
                   value={article.title}
-                  readOnly
+                  onChange={() => {}}
+                  readOnly={phase !== 'analyzed'}
                 />
               </div>
 
-              {/* Title Analysis Box (post-analysis) */}
-              {phase === 'analyzed' && analysis &&
-                (analysis.titleAnalysis || analysis.titleSuggestions.length > 0) && (
-                <div className="sim-analysis-box">
-                  <div
-                    className="sim-analysis-header"
-                    onClick={() => setTitleExpanded(!titleExpanded)}
-                  >
-                    <span>Article Analyzed</span>
-                    <span className="sim-analysis-chevron">
-                      {titleExpanded ? '\u25B4' : '\u25BE'}
-                    </span>
+              {phase === 'analyzed' && titleReview && titleStatus && (
+                <div className="sim-top-pick-box">
+                  <div className="sim-top-pick-header">
+                    <div className="sim-top-pick-statuses">
+                      {(['good_to_go', 'worth_revisiting', 'needs_work'] as const).map((status) => {
+                        const appearance = getStatusAppearance(status);
+                        return (
+                          <span
+                            key={status}
+                            className="sim-top-pick-pill"
+                            style={{
+                              background: appearance.bg,
+                              color: appearance.text,
+                              borderColor: appearance.border,
+                              opacity: titleReview.overallStatus === status ? 1 : 0.55,
+                            }}
+                          >
+                            {appearance.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <div className="sim-top-pick-signals">
+                      {(['seo', 'clarity', 'specificity'] as const).map((key) => {
+                        const chip = getChipAppearance(titleReview.chipRatings[key]);
+                        return (
+                          <span
+                            key={key}
+                            className="sim-top-pick-chip"
+                            style={{ background: chip.bg, color: chip.text, borderColor: chip.border }}
+                          >
+                            {key === 'seo' ? 'SEO' : key.charAt(0).toUpperCase() + key.slice(1)}
+                          </span>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        className="sim-top-pick-collapse"
+                        onClick={() => setTitleExpanded((value) => !value)}
+                        aria-label={titleExpanded ? 'Collapse title review' : 'Expand title review'}
+                        title={titleExpanded ? 'Collapse title review' : 'Expand title review'}
+                      >
+                        {titleExpanded ? '▴' : '▾'}
+                      </button>
+                    </div>
                   </div>
+
                   {titleExpanded && (
-                    <div className="sim-analysis-body">
-                      {analysis.titleAnalysis && (
-                        <p className="sim-analysis-text">{analysis.titleAnalysis}</p>
-                      )}
-                      {analysis.titleSuggestions.length > 0 && (
-                        <>
-                          <div className="sim-suggestions-label">TITLE SUGGESTIONS</div>
-                          <ul className="sim-suggestions-list">
-                            {analysis.titleSuggestions.map((s, i) => (
-                              <li key={i}>
-                                <span className="sim-suggestion-title">{s.title}</span>
-                                {s.description && (
-                                  <span className="sim-suggestion-desc">{s.description}</span>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        </>
+                    <div className="sim-top-pick-body">
+                      <div className="sim-top-pick-summary">{titleReview.summaryReason}</div>
+
+                      <div className="sim-top-pick-suggestions">
+                        {titleReview.suggestedTitles.map((suggestion, index) => (
+                          <div key={`${suggestion.title}-${index}`} className="sim-top-pick-suggestion-card">
+                            <div>
+                              <div className="sim-top-pick-suggestion-title">{suggestion.title}</div>
+                              <div className="sim-top-pick-suggestion-why">{suggestion.whyItWorks}</div>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn-primary"
+                              onClick={() => setArticle((current) => current ? { ...current, title: suggestion.title } : current)}
+                            >
+                              Use title
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {titleReview.followUpControls.allowGenerateMore && (
+                        <div className="sim-top-pick-more">
+                          <div className="sim-top-pick-more-title">Ask for more</div>
+                          <div className="sim-top-pick-more-controls">
+                            <select value={followUpMode} onChange={(e) => setFollowUpMode(e.target.value)}>
+                              {titleReview.followUpControls.suggestedModes.map((mode) => (
+                                <option key={mode} value={mode}>{mode}</option>
+                              ))}
+                            </select>
+                            <textarea
+                              rows={3}
+                              value={followUpPrompt}
+                              onChange={(e) => setFollowUpPrompt(e.target.value)}
+                              placeholder={titleReview.followUpControls.placeholderPrompt}
+                            />
+                            <button type="button" className="btn-secondary" onClick={handleGenerateMoreTitles} disabled={followUpLoading}>
+                              {followUpLoading ? 'Generating…' : 'Generate more'}
+                            </button>
+                          </div>
+                          {followUpLoading && (
+                            <div className="sim-top-pick-loading">
+                              <div className="spinner" />
+                              <span>Thinking through more title options…</span>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Subtitle */}
               <div className="sim-field">
                 <label>
                   Subtitle{' '}
                   <span className="sim-info-icon">&#9432;</span>
                 </label>
-                <textarea
-                  className="sim-textarea"
-                  rows={3}
-                  value={article.deck}
-                  readOnly
-                />
+                <textarea className="sim-textarea" rows={3} value={article.deck} readOnly />
               </div>
 
-              {/* Author (hardcoded) */}
               <div className="sim-field">
                 <label>
                   Author <span className="sim-required">*</span>
@@ -417,40 +611,25 @@ IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, n
                   <div className="sim-tag">
                     Ashley Burnett <span className="sim-tag-x">&times;</span>
                   </div>
-                  <input
-                    type="text"
-                    className="sim-input sim-author-input"
-                    placeholder="Add author..."
-                    readOnly
-                  />
+                  <input type="text" className="sim-input sim-author-input" placeholder="Add author..." readOnly />
                   <button className="sim-custom-btn" type="button">+ Custom</button>
                 </div>
               </div>
 
-              {/* Body */}
               <div className="sim-field">
                 <label>
                   Body <span className="sim-required">*</span>
                 </label>
 
-                {/* Body Analysis Box (post-analysis) */}
-                {phase === 'analyzed' && analysis &&
-                  (analysis.bodyAnalysis || analysis.bodySuggestions.length > 0) && (
+                {phase === 'analyzed' && analysis && (analysis.bodyAnalysis || analysis.bodySuggestions.length > 0) && (
                   <div className="sim-analysis-box">
-                    <div
-                      className="sim-analysis-header"
-                      onClick={() => setBodyExpanded(!bodyExpanded)}
-                    >
+                    <div className="sim-analysis-header" onClick={() => setBodyExpanded(!bodyExpanded)}>
                       <span>Body Analyzed</span>
-                      <span className="sim-analysis-chevron">
-                        {bodyExpanded ? '\u25B4' : '\u25BE'}
-                      </span>
+                      <span className="sim-analysis-chevron">{bodyExpanded ? '\u25B4' : '\u25BE'}</span>
                     </div>
                     {bodyExpanded && (
                       <div className="sim-analysis-body">
-                        {analysis.bodyAnalysis && (
-                          <p className="sim-analysis-text">{analysis.bodyAnalysis}</p>
-                        )}
+                        {analysis.bodyAnalysis && <p className="sim-analysis-text">{analysis.bodyAnalysis}</p>}
                         {analysis.bodySuggestions.length > 0 && (
                           <>
                             <div className="sim-suggestions-label">BODY SUGGESTIONS</div>
@@ -458,9 +637,7 @@ IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, n
                               {analysis.bodySuggestions.map((s, i) => (
                                 <li key={i}>
                                   <span className="sim-suggestion-title">{s.title}</span>
-                                  {s.description && (
-                                    <span className="sim-suggestion-desc">{s.description}</span>
-                                  )}
+                                  {s.description && <span className="sim-suggestion-desc">{s.description}</span>}
                                 </li>
                               ))}
                             </ul>
@@ -471,7 +648,6 @@ IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, n
                   </div>
                 )}
 
-                {/* Fake Rich-Text Editor */}
                 <div className="sim-editor">
                   <div className="sim-editor-menu">
                     <span>File</span>
@@ -495,19 +671,13 @@ IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, n
                     <span className="sim-tb-select">Paragraph &darr;</span>
                     <span className="sim-tb-select">Styles &darr;</span>
                   </div>
-                  <div className="sim-editor-body">
-                    {article.body || 'Start adding your content here'}
-                  </div>
-                  <div className="sim-editor-footer">
-                    Words: {wordCount} &nbsp; Characters: {charCount}
-                  </div>
+                  <div className="sim-editor-body">{article.body || 'Start adding your content here'}</div>
+                  <div className="sim-editor-footer">Words: {wordCount} &nbsp; Characters: {charCount}</div>
                 </div>
               </div>
             </div>
 
-            {/* ── Right Column ── */}
             <div className="sim-right">
-              {/* Article Layout */}
               <div className="sim-field">
                 <label>
                   Article Layout <span className="sim-required">*</span>{' '}
@@ -520,7 +690,6 @@ IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, n
                 </div>
               </div>
 
-              {/* Hero Image */}
               <div className="sim-field">
                 <label>
                   Hero Image{' '}
@@ -554,7 +723,6 @@ IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, n
                 )}
               </div>
 
-              {/* Primary Section */}
               <div className="sim-field">
                 <label>
                   Primary Section <span className="sim-required">*</span>{' '}
@@ -563,131 +731,69 @@ IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, n
                 {phase === 'analyzed' ? (
                   <div className="sim-tag-container">
                     <div className="sim-tag sim-tag-blue">
-                      Custom Content &rarr; Advertorials{' '}
-                      <span className="sim-tag-x">&times;</span>
+                      Custom Content &rarr; Advertorials <span className="sim-tag-x">&times;</span>
                     </div>
                   </div>
                 ) : (
-                  <input
-                    type="text"
-                    className="sim-input"
-                    placeholder="Type to search sections..."
-                    readOnly
-                  />
+                  <input type="text" className="sim-input" placeholder="Type to search sections..." readOnly />
                 )}
               </div>
 
-              {/* Publish Timeline */}
               <div className="sim-field">
                 <label>
                   Publish Timeline <span className="sim-required">*</span>{' '}
                   <span className="sim-info-icon">&#9432;</span>
                 </label>
                 <div className="sim-timeline-btns">
-                  <button className="sim-timeline-btn" type="button">
-                    Schedule Date &amp; Time
-                  </button>
-                  <button className="sim-timeline-btn active" type="button">
-                    After Final Review
-                  </button>
+                  <button className="sim-timeline-btn" type="button">Schedule Date &amp; Time</button>
+                  <button className="sim-timeline-btn active" type="button">After Final Review</button>
                 </div>
               </div>
 
               {phase === 'analyzed' && (
-                <button className="sim-preview-btn" type="button">
-                  &#x1F4CB; Preview Article
-                </button>
+                <button className="sim-preview-btn" type="button">&#x1F4CB; Preview Article</button>
               )}
             </div>
           </div>
 
-          {/* CMS Footer */}
           <div className="sim-cms-footer">
-            <button className="sim-quit-btn" type="button" onClick={loadRandomArticle}>
-              Quit
-            </button>
+            <button className="sim-quit-btn" type="button" onClick={loadRandomArticle}>Quit</button>
             <div className="sim-footer-right">
-              <button
-                className="sim-analyze-btn"
-                type="button"
-                onClick={handleAnalyze}
-                disabled={phase === 'analyzing' || !selectedPromptId || builtPrompts.length === 0}
-              >
+              <button className="sim-analyze-btn" type="button" onClick={handleAnalyze} disabled={phase === 'analyzing' || !selectedPromptId || builtPrompts.length === 0}>
                 Analyze
               </button>
-              {phase === 'analyzed' && (
-                <button className="sim-next-btn" type="button">Next</button>
-              )}
+              {phase === 'analyzed' && <button className="sim-next-btn" type="button">Next</button>}
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Analyzing Takeover Overlay ── */}
       {phase === 'analyzing' && (
         <div className="takeover-overlay">
           <div className="takeover-content">
-            {/* Spinning Northstar Logo */}
             <div className="takeover-logo">
               <img src="/northstar-logo.svg" alt="Northstar" />
             </div>
-
-            {/* Dynamic message */}
             <h3 className="takeover-title">Analyzing Article</h3>
-            <p className="takeover-message" key={takeoverMessage}>
-              {takeoverMessage}
-            </p>
-
-            {/* Time estimate + elapsed */}
+            <p className="takeover-message" key={takeoverMessage}>{takeoverMessage}</p>
             <div className="takeover-time">
               <span>This should take less than {ESTIMATED_SECONDS} seconds</span>
               <span className="takeover-elapsed">{elapsedSeconds}s elapsed</span>
             </div>
-
-            {/* Progress bar */}
             <div className="takeover-progress-bar">
-              <div
-                className="takeover-progress-fill"
-                style={{
-                  width: `${Math.min((elapsedSeconds / ESTIMATED_SECONDS) * 100, 95)}%`,
-                }}
-              />
+              <div className="takeover-progress-fill" style={{ width: `${Math.min((elapsedSeconds / ESTIMATED_SECONDS) * 100, 95)}%` }} />
             </div>
-
-            {/* Cancel button */}
-            <button
-              className="takeover-cancel-btn"
-              type="button"
-              onClick={handleCancelRequest}
-            >
-              Cancel Analysis
-            </button>
+            <button className="takeover-cancel-btn" type="button" onClick={handleCancelRequest}>Cancel Analysis</button>
           </div>
 
-          {/* Cancel Confirmation Dialog */}
           {showCancelConfirm && (
             <div className="takeover-confirm-overlay">
               <div className="takeover-confirm-dialog">
                 <h4>Cancel AI Analysis?</h4>
-                <p>
-                  Are you sure you want to cancel this AI process? Any results
-                  that have not been completed will be lost.
-                </p>
+                <p>Are you sure you want to cancel this AI process? Any results that have not been completed will be lost.</p>
                 <div className="takeover-confirm-btns">
-                  <button
-                    className="takeover-confirm-back"
-                    type="button"
-                    onClick={handleCancelDismiss}
-                  >
-                    Keep Analyzing
-                  </button>
-                  <button
-                    className="takeover-confirm-yes"
-                    type="button"
-                    onClick={handleCancelConfirm}
-                  >
-                    Yes, Cancel
-                  </button>
+                  <button className="takeover-confirm-back" type="button" onClick={handleCancelDismiss}>Keep Analyzing</button>
+                  <button className="takeover-confirm-yes" type="button" onClick={handleCancelConfirm}>Yes, Cancel</button>
                 </div>
               </div>
             </div>

@@ -43,3 +43,33 @@ export interface ComparisonResult {
     duration: number;
   };
 }
+
+export interface TitleReviewSuggestion {
+  title: string;
+  whyItWorks: string;
+  kind: 'editorial' | 'seo' | 'buzzy' | 'restrained' | 'trade';
+  recommended: boolean;
+}
+
+export interface TitleReview {
+  overallStatus: 'good_to_go' | 'worth_revisiting' | 'needs_work';
+  summaryReason: string;
+  chipRatings: {
+    seo: 'green' | 'yellow' | 'red';
+    clarity: 'green' | 'yellow' | 'red';
+    specificity: 'green' | 'yellow' | 'red';
+  };
+  collapsed: {
+    defaultCollapsed: boolean;
+  };
+  detail: {
+    editorNote: string;
+    whyThisMatters: string | null;
+  };
+  suggestedTitles: TitleReviewSuggestion[];
+  followUpControls: {
+    allowGenerateMore: boolean;
+    suggestedModes: string[];
+    placeholderPrompt: string;
+  };
+}
