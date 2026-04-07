@@ -29,7 +29,7 @@ const exampleAnalysis = (() => {
 const variants: Variant[] = [
   {
     id: 'nino-edits',
-    name: 'Nino Edits',
+    name: 'Top Pick',
     family: 'nino',
     badge: 'Focused direction',
     scoreType: 'multi',
@@ -517,7 +517,7 @@ function renderSignalChip(label: string, color: 'green' | 'yellow' | 'red') {
     ? { bg: '#f0fdf4', text: '#166534', border: '#86efac' }
     : color === 'red'
       ? { bg: '#fef2f2', text: '#991b1b', border: '#fca5a5' }
-      : { bg: '#fffbeb', text: '#92400e', border: '#fcd34d' };
+      : { bg: '#fffbeb', text: '#a16207', border: '#fcd34d' };
 
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.24rem 0.52rem', borderRadius: '999px', background: palette.bg, border: `1px solid ${palette.border}`, fontSize: '0.76rem', fontWeight: 700, color: palette.text }}>
