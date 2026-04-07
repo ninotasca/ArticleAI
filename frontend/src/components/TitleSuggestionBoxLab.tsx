@@ -369,10 +369,10 @@ function renderVariant(
         </div>
       </div>
 
-      <div style={{ padding: '0.8rem 0.95rem' }}>
-        <div style={{ color: '#4c1d95', fontSize: '0.9rem', lineHeight: 1.45 }}>{variant.notes[1] || variant.notes[0]}</div>
+      {!isCollapsed && (
+        <div style={{ padding: '0.8rem 0.95rem' }}>
+          <div style={{ color: '#4c1d95', fontSize: '0.9rem', lineHeight: 1.45 }}>{variant.notes[1] || variant.notes[0]}</div>
 
-        {!isCollapsed && (
           <>
             <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.55rem' }}>
           {allSuggestions.map((suggestion, index) => (
@@ -391,7 +391,7 @@ function renderVariant(
         {(variant.canPromptMore || variant.hasDropdown) && (
           <div style={{ marginTop: '0.95rem', paddingTop: '0.95rem', borderTop: '2px solid #6d28d9' }}>
             <div style={{ fontWeight: 700, color: '#312e81', marginBottom: '0.55rem' }}>Ask for more</div>
-            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
               {variant.hasDropdown && (
                 <select style={{ maxWidth: '220px' }} value={selectedTone} onChange={(e) => onToneChange(e.target.value)}>
                   <option value="seo">More SEO-friendly</option>
@@ -421,8 +421,8 @@ function renderVariant(
           </div>
         )}
           </>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
