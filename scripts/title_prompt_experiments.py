@@ -250,6 +250,136 @@ VARIANTS = [
             """
         ).strip(),
     ),
+    PromptVariant(
+        slug="editor-nod-keep-or-revise",
+        label="Editor Nod / Keep or Revise",
+        mode="verdict",
+        instructions=textwrap.dedent(
+            """
+            Evaluate the article title for a busy, experienced B2B travel editor.
+
+            Start by deciding whether the title is already solid enough to keep or whether it is worth considering a revision. Be selective. Do not invent problems just to be helpful.
+
+            Return your response in this exact plain-text structure:
+            Verdict: <good to go / worth revising>
+            Reason: <one short sentence explaining the verdict>
+            Suggested Title: <one improved title, or write "Keep current title">
+            Alternate Title: <optional alternate if useful, or write "None">
+            """
+        ).strip(),
+    ),
+    PromptVariant(
+        slug="editor-nod-seo-alt",
+        label="Editor Nod + SEO Alt",
+        mode="verdict-seo",
+        instructions=textwrap.dedent(
+            """
+            Evaluate the article title for a busy, experienced B2B travel editor.
+
+            First decide whether the current title is good to go or worth revising. Then, if a revision is worth considering, provide one improved editorial title and one SEO-friendlier alternative. Keep both credible and trade-appropriate.
+
+            Return your response in this exact plain-text structure:
+            Verdict: <good to go / worth revising>
+            Reason: <one short sentence>
+            Editorial Title: <best editorial title, or write "Keep current title">
+            SEO Title: <more search-friendly title, or write "None">
+            """
+        ).strip(),
+    ),
+    PromptVariant(
+        slug="headline-options-by-trait",
+        label="Headline Options by Trait",
+        mode="alternatives",
+        instructions=textwrap.dedent(
+            """
+            Evaluate the article title for a B2B travel industry audience.
+
+            Give a quick verdict on whether the current title is fine or worth revising. If revision is worth considering, provide alternatives with distinct traits so an experienced editor can choose quickly.
+
+            Return your response in this exact plain-text structure:
+            Verdict: <good to go / worth revising>
+            Reason: <one short sentence>
+            Conservative Title: <one restrained improvement, or write "Keep current title">
+            SEO Title: <one more search-friendly version, or write "None">
+            Buzzy Title: <one slightly livelier but still credible version, or write "None">
+            """
+        ).strip(),
+    ),
+    PromptVariant(
+        slug="minimal-verdict-threshold",
+        label="Minimal Verdict Threshold",
+        mode="threshold",
+        instructions=textwrap.dedent(
+            """
+            Evaluate the article title for a busy, experienced B2B travel editor.
+
+            If the title is strong enough to publish as-is, reply exactly:
+            Good to go
+
+            Only if there is a meaningful editorial reason to revisit it, return this exact plain-text structure:
+            Verdict: worth revising
+            Reason: <one short sentence>
+            Suggested Title: <one improved title>
+            """
+        ).strip(),
+    ),
+    PromptVariant(
+        slug="single-score-with-verdict",
+        label="Single Score + Verdict",
+        mode="scored-verdict",
+        instructions=textwrap.dedent(
+            """
+            Evaluate the article title for a B2B travel industry audience.
+
+            Give a single overall score and a practical editorial verdict. Be direct and concise.
+
+            Return your response in this exact plain-text structure:
+            Score: <0-100>
+            Verdict: <good to go / worth revising>
+            Reason: <one short sentence>
+            Suggested Title: <one improved title, or write "Keep current title">
+            """
+        ).strip(),
+    ),
+    PromptVariant(
+        slug="multi-score-with-options",
+        label="Multi Score + Options",
+        mode="scored-options",
+        instructions=textwrap.dedent(
+            """
+            Evaluate the article title for a B2B travel industry audience.
+
+            Score the title for SEO, Clarity, Specificity, and Brand Fit. Then give a practical editorial verdict and headline options only if useful.
+
+            Return your response in this exact plain-text structure:
+            SEO: <0-10>
+            Clarity: <0-10>
+            Specificity: <0-10>
+            Brand Fit: <0-10>
+            Verdict: <good to go / worth revising>
+            Reason: <one short sentence>
+            Conservative Title: <one restrained improvement, or write "Keep current title">
+            SEO Title: <one search-friendly alternative, or write "None">
+            """
+        ).strip(),
+    ),
+    PromptVariant(
+        slug="why-revise-only",
+        label="Why Revise Only",
+        mode="reason-first",
+        instructions=textwrap.dedent(
+            """
+            Evaluate the article title for a busy, experienced B2B travel editor.
+
+            Your job is to quickly answer two questions: is this worth revisiting, and if so, why?
+
+            Return your response in this exact plain-text structure:
+            Verdict: <good to go / worth revising>
+            Why: <one short sentence>
+            Better Title: <one improved title, or write "Keep current title">
+            """
+        ).strip(),
+    ),
 ]
 
 
