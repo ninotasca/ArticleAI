@@ -5,7 +5,9 @@ import { isOpenAIConfigured } from './_lib/ai';
 export default function handler(_req: VercelRequest, res: VercelResponse) {
   res.json({
     status: 'ok',
-    supabase: isSupabaseConfigured(),
-    openai: isOpenAIConfigured(),
+    env: {
+      supabase: isSupabaseConfigured(),
+      openai: isOpenAIConfigured(),
+    },
   });
 }

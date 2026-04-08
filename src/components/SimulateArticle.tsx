@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { fetchArticleSample, fetchBuiltPrompts, runAiTest } from '../api';
+import { useSearchParams } from 'react-router-dom';
+import { fetchArticleById, fetchArticleSample, fetchBuiltPrompts, runAiTest } from '../api';
 import type { Article, BuiltPrompt, TitleReview } from '../types';
 
 interface Suggestion {
@@ -264,6 +265,8 @@ function getChipAppearance(value: 'green' | 'yellow' | 'red') {
 }
 
 export function SimulateArticle() {
+  const [searchParams] = useSearchParams();
+  const articleIdParam = searchParams.get('article');
   const [article, setArticle] = useState<Article | null>(null);
   const [articleLoading, setArticleLoading] = useState(true);
   const [builtPrompts, setBuiltPrompts] = useState<BuiltPrompt[]>([]);
@@ -285,8 +288,12 @@ export function SimulateArticle() {
   const elapsedIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    loadRandomArticle();
-  }, []);
+    if (articleIdParam) {
+      loadArticleById(parseInt(articleIdParam));
+    } else {
+      loadRandomArticle();
+    }
+  }, [articleIdParam]);
 
   useEffect(() => {
     fetchBuiltPrompts()
@@ -296,6 +303,22 @@ export function SimulateArticle() {
       })
       .catch(() => {});
   }, []);
+
+  async function loadArticleById(id: number) {
+    setArticleLoading(true);
+    setPhase('editing');
+    setAnalysis(null);
+    setError(null);
+    setFollowUpPrompt('');
+    try {
+      const fetched = await fetchArticleById(id);
+      setArticle(fetched);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch article');
+    } finally {
+      setArticleLoading(false);
+    }
+  }
 
   async function loadRandomArticle() {
     setArticleLoading(true);

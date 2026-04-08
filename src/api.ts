@@ -17,6 +17,12 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return res.json();
 }
 
+export async function fetchArticleById(id: number): Promise<Article> {
+  const res = await fetch(`${API_BASE}/articles/${id}`);
+  const data = await handleResponse<{ article: Article }>(res);
+  return data.article;
+}
+
 export async function fetchArticleSample(
   count: number
 ): Promise<{ articles: Article[] }> {

@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
-import { fetchArticleSample, fetchBuiltPrompts, runAiTest } from '../api';
+import { useSearchParams } from 'react-router-dom';
+import { fetchArticleById, fetchArticleSample, fetchBuiltPrompts, runAiTest } from '../api';
 import type { Article, BuiltPrompt } from '../types';
 
 export function DirectTest() {
+  const [searchParams] = useSearchParams();
+  const articleIdParam = searchParams.get('article');
   const [article, setArticle] = useState<Article | null>(null);
   const [articleLoading, setArticleLoading] = useState(true);
   const [builtPrompts, setBuiltPrompts] = useState<BuiltPrompt[]>([]);
@@ -11,10 +14,14 @@ export function DirectTest() {
   const [output, setOutput] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Load a random article on mount
+  // Load article on mount — use ?article=ID if provided, otherwise random
   useEffect(() => {
-    loadRandomArticle();
-  }, []);
+    if (articleIdParam) {
+      loadArticleById(parseInt(articleIdParam));
+    } else {
+      loadRandomArticle();
+    }
+  }, [articleIdParam]);
 
   // Load built prompts on mount
   useEffect(() => {
@@ -25,6 +32,20 @@ export function DirectTest() {
       })
       .catch((err) => console.error('Failed to load built prompts:', err));
   }, []);
+
+  async function loadArticleById(id: number) {
+    setArticleLoading(true);
+    setOutput(null);
+    setError(null);
+    try {
+      const article = await fetchArticleById(id);
+      setArticle(article);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch article');
+    } finally {
+      setArticleLoading(false);
+    }
+  }
 
   async function loadRandomArticle() {
     setArticleLoading(true);

@@ -2,7 +2,7 @@ COMPOSE = docker compose
 
 .PHONY: dev down rebuild logs
 
-## Start all services (hot-reload enabled)
+## Start frontend (hot-reload)
 dev:
 	$(COMPOSE) up
 
@@ -10,22 +10,14 @@ dev:
 dev-bg:
 	$(COMPOSE) up -d
 
-## Stop all services
+## Stop
 down:
 	$(COMPOSE) down
 
-## Full rebuild + start (use after dependency changes)
+## Full rebuild + start
 rebuild:
 	$(COMPOSE) up --build
 
-## Tail logs for all services
+## Tail logs
 logs:
 	$(COMPOSE) logs -f
-
-## Tail frontend logs only
-logs-frontend:
-	$(COMPOSE) logs -f frontend
-
-## Tail backend logs only
-logs-backend:
-	$(COMPOSE) logs -f backend

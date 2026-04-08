@@ -1,8 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { Article } from '../types';
-import { fetchArticleSample, runAiTest } from '../api';
+import { fetchArticleById, fetchArticleSample, runAiTest } from '../api';
 
 export function AiTest() {
+  const [searchParams] = useSearchParams();
+  const articleIdParam = searchParams.get('article');
+
+  useEffect(() => {
+    if (articleIdParam) {
+      handleLoadArticleById(parseInt(articleIdParam));
+    }
+  }, [articleIdParam]);
   const [article, setArticle] = useState<Article | null>(null);
   const [prompt, setPrompt] = useState(
     'Based on the following article, provide a brief summary:\n\n{{body}}'
@@ -11,6 +20,20 @@ export function AiTest() {
   const [loadingArticle, setLoadingArticle] = useState(false);
   const [runningPrompt, setRunningPrompt] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleLoadArticleById = async (id: number) => {
+    setLoadingArticle(true);
+    setError(null);
+    setResult(null);
+    try {
+      const fetched = await fetchArticleById(id);
+      setArticle(fetched);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load article');
+    } finally {
+      setLoadingArticle(false);
+    }
+  };
 
   const handleLoadArticle = async () => {
     setLoadingArticle(true);
