@@ -54,7 +54,7 @@ function App() {
       <header className="app-header">
         <div className="header-content">
           <div>
-            <h1>📰 ArticleAI v0.1</h1>
+            <h1>📰 ArticleAI v0.22</h1>
             <p>Prompt Testing &amp; Comparison Tool</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
