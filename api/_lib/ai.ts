@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import type { Article } from './supabase';
+import type { Article } from './supabase.js';
 
 const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
