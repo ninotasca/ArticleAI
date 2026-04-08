@@ -2,18 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "Frontend (Vite)",
-      "runtimeExecutable": "/opt/homebrew/bin/npm",
-      "runtimeArgs": ["run", "dev"],
-      "cwd": "frontend",
+      "name": "Vite Dev",
+      "runtimeExecutable": "/opt/homebrew/bin/npx",
+      "runtimeArgs": ["vite", "--host", "0.0.0.0"],
       "port": 5173
-    },
-    {
-      "name": "Backend (Express)",
-      "runtimeExecutable": "/opt/homebrew/bin/npm",
-      "runtimeArgs": ["run", "dev"],
-      "cwd": "backend",
-      "port": 3001
     }
   ]
 }
