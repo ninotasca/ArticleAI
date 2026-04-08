@@ -15,5 +15,5 @@
     "noFallthroughCasesInSwitch": true,
     "resolveJsonModule": true
   },
-  "include": ["src"]
+  "include": ["src", "api", "vite-plugin-local-api.ts", "vercel.json"]
 }
