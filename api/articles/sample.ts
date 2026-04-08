@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getRandomArticles } from '../_lib/supabase';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
   try {
+    const { getRandomArticles } = await import('../_lib/supabase');
     const count = parseInt(req.query.count as string) || 10;
     const articles = await getRandomArticles(count);
     res.json({ articles });
