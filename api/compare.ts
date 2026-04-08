@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getArticlesByIds } from './_lib/supabase';
-import { runPromptsForArticle } from './_lib/ai';
-import type { Prompt } from './_lib/prompts';
+import { getArticlesByIds } from './_lib/supabase.js';
+import { runPromptsForArticle } from './_lib/ai.js';
+import type { Prompt } from './_lib/prompts.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

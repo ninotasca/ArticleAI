@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { updatePersona, deletePersona } from '../_lib/personas';
+import { updatePersona, deletePersona } from '../_lib/personas.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const id = req.query.id as string;

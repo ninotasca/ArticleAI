@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAllPersonas, createPersona } from '../_lib/personas';
+import { getAllPersonas, createPersona } from '../_lib/personas.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {

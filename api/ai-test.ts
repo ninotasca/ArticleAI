@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getArticlesByIds, getRandomArticles } from './_lib/supabase';
-import { runPrompt } from './_lib/ai';
+import { getArticlesByIds, getRandomArticles } from './_lib/supabase.js';
+import { runPrompt } from './_lib/ai.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

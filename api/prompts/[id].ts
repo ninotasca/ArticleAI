@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { updatePrompt, deletePrompt } from '../_lib/prompts';
+import { updatePrompt, deletePrompt } from '../_lib/prompts.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const id = req.query.id as string;

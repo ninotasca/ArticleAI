@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { updateBuiltPrompt, deleteBuiltPrompt } from '../_lib/builtPrompts';
+import { updateBuiltPrompt, deleteBuiltPrompt } from '../_lib/builtPrompts.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const id = req.query.id as string;
