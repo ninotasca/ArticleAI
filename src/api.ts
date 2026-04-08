@@ -12,6 +12,9 @@ async function handleResponse<T>(res: Response): Promise<T> {
     } catch {
       message = errorText;
     }
+    if (!message) {
+      message = `Request failed (${res.status}) — is the backend running? Try: vercel dev`;
+    }
     throw new Error(message);
   }
   return res.json();

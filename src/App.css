@@ -114,7 +114,8 @@ body {
 .nav-group:hover .nav-group-items {
   display: block;
 }
-.nav-group-items button {
+.nav-group-items button,
+.nav-group-items a {
   display: block;
   width: 100%;
   background: none;
@@ -125,13 +126,16 @@ body {
   color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
+  text-decoration: none;
   transition: all 0.12s ease;
 }
-.nav-group-items button:hover:not(:disabled) {
+.nav-group-items button:hover:not(:disabled),
+.nav-group-items a:hover {
   background: var(--primary-light);
   color: var(--primary);
 }
-.nav-group-items button.active {
+.nav-group-items button.active,
+.nav-group-items a.active {
   color: var(--primary);
   font-weight: 600;
   background: var(--primary-light);
@@ -139,6 +143,11 @@ body {
 .nav-group-items button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+.nav-group-items a.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* ─── Main ─── */
