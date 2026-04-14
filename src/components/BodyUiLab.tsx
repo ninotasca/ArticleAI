@@ -103,7 +103,9 @@ type VariantId =
   | 'inline-annotations'
   | 'summary-first'
   | 'quiet-default'
-  | 'focused-feedback';
+  | 'focused-feedback'
+  | 'followup-b'
+  | 'followup-c';
 
 interface Variant {
   id: VariantId;
@@ -113,6 +115,18 @@ interface Variant {
 }
 
 const VARIANTS: Variant[] = [
+  {
+    id: 'followup-b',
+    name: 'Follow-up B — Single Response',
+    badge: 'Simple',
+    rationale: 'One textarea, one AI response at a time. New question replaces the previous answer. Clean and low-clutter — the editor stays focused on one exchange.',
+  },
+  {
+    id: 'followup-c',
+    name: 'Follow-up C — Quick Prompts + Freeform',
+    badge: 'Guided',
+    rationale: 'Preset chips surfaced from the actual suggestions (e.g. "Fix the SEO angle") sit above a freeform textarea. Quick for editors who aren\'t sure what to ask; freeform for everything else. Responses shown as a running thread.',
+  },
   {
     id: 'top-pick',
     name: 'Top Pick',
@@ -280,18 +294,23 @@ function TopPick({ analysis }: { analysis: BodyAnalysis }) {
   const [open, setOpen] = useState(false);
   return (
     <div style={{ ...SHELL_STYLE, border: '1px solid #c4b5fd', background: '#f5f3ff' }}>
-      <div
-        onClick={() => setOpen((v) => !v)}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.65rem 0.9rem', cursor: 'pointer', gap: '0.75rem' }}
-      >
-        <span style={{ fontSize: '0.84rem', color: '#4c1d95', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+      {/* Always-visible header: full summary + plain text item list */}
+      <div style={{ padding: '0.75rem 0.9rem 0.6rem' }}>
+        <p style={{ margin: 0, fontSize: '0.84rem', color: '#4c1d95', fontWeight: 500, lineHeight: 1.5 }}>
           {analysis.summary}
-        </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-          <span style={{ fontSize: '0.75rem', color: '#7c3aed', fontWeight: 600 }}>{analysis.suggestions.length} suggestions</span>
-          <span style={{ color: '#7c3aed', fontWeight: 700, fontSize: '0.9rem' }}>{open ? '▴' : '▾'}</span>
-        </div>
+        </p>
+        <p style={{ margin: '0.45rem 0 0', fontSize: '0.78rem', color: '#6d28d9', lineHeight: 1.5 }}>
+          {analysis.suggestions.map((s) => s.title).join(' · ')}
+        </p>
       </div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', width: '100%', background: open ? '#ddd6fe' : '#ede9fe', border: 'none', borderTop: '1px solid #ddd6fe', color: '#6d28d9', fontSize: '0.76rem', fontWeight: 700, padding: '0.4rem', cursor: 'pointer', letterSpacing: '0.02em' }}
+      >
+        {open ? <>Hide suggestions <span>▴</span></> : <>{analysis.suggestions.length} suggestion{analysis.suggestions.length !== 1 ? 's' : ''} <span>▾</span></>}
+      </button>
+      {/* Expanded: individual suggestion cards */}
       {open && (
         <div style={{ borderTop: '1px solid #ddd6fe', padding: '0.8rem 0.9rem', display: 'grid', gap: '0.55rem' }}>
           {analysis.suggestions.map((s) => {
@@ -800,11 +819,249 @@ function FocusedFeedback({ analysis }: { analysis: BodyAnalysis }) {
 }
 
 // ---------------------------------------------------------------------------
+// Mock AI responses for follow-up demos
+// ---------------------------------------------------------------------------
+
+const MOCK_RESPONSES: Record<string, string> = {
+  lede: `Here's a rewritten lede that foregrounds the trade angle:\n\n"Corporate travel managers and incentive planners breathing a sigh of relief: Air Canada and its pilots union have reached a tentative agreement, ending weeks of tense negotiations that threatened to disrupt summer group travel across Canada.\n\nThe deal, announced late Tuesday and brokered with the help of federal mediators, covers compensation, scheduling, and work-rule changes. Details have not been released pending ratification by union members."`,
+  seo: `To strengthen search findability, the article needs the phrase "labor agreement" to appear explicitly in the first two paragraphs — not just "tentative agreement." Here's a suggested revision for the second paragraph:\n\n"The tentative labor agreement, announced late Tuesday, was brokered with the help of federal mediators and covers compensation, scheduling, and work-rule changes."\n\nAdding "labor agreement" here picks up the highest-volume search term without changing the editorial tone.`,
+  cupe: `The CUPE reference works better with a single sentence of context to explain its relevance now:\n\n"CUPE, which represents Air Canada's flight attendants, reached its own agreement earlier in the year after a four-month ratification process — a timeline that may inform how long this pilots' deal takes to formally close."\n\nIf that context isn't available or verified, cut the reference entirely. A dangling data point undermines rather than supports the piece.`,
+  default: `That's a reasonable question. Based on the article, the strongest improvement would be moving the trade-industry angle into the second paragraph. Right now the piece reads as general business news rather than B2B travel content. Foregrounding the impact on corporate travel managers and incentive planners will make it immediately relevant to your audience and improve time-on-page for trade readers.`,
+};
+
+function getMockResponse(question: string): string {
+  const q = question.toLowerCase();
+  if (q.includes('lede') || q.includes('lead') || q.includes('rewrite')) return MOCK_RESPONSES.lede;
+  if (q.includes('seo') || q.includes('search')) return MOCK_RESPONSES.seo;
+  if (q.includes('cupe') || q.includes('ending') || q.includes('last')) return MOCK_RESPONSES.cupe;
+  return MOCK_RESPONSES.default;
+}
+
+// ---------------------------------------------------------------------------
+// Follow-up Option B — Single active response
+// ---------------------------------------------------------------------------
+
+function FollowUpB({ analysis }: { analysis: BodyAnalysis }) {
+  const [open, setOpen] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [response, setResponse] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  function submit(q: string) {
+    if (!q.trim()) return;
+    setLoading(true);
+    setResponse('');
+    window.setTimeout(() => {
+      setResponse(getMockResponse(q));
+      setLoading(false);
+    }, 1400);
+  }
+
+  return (
+    <div style={{ ...SHELL_STYLE, border: '1px solid #c4b5fd', background: '#f5f3ff' }}>
+      <div style={{ padding: '0.75rem 0.9rem 0.6rem' }}>
+        <p style={{ margin: 0, fontSize: '0.84rem', color: '#4c1d95', fontWeight: 500, lineHeight: 1.5 }}>{analysis.summary}</p>
+        <p style={{ margin: '0.45rem 0 0', fontSize: '0.78rem', color: '#6d28d9', lineHeight: 1.5 }}>
+          {analysis.suggestions.map((s) => s.title).join(' · ')}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', width: '100%', background: open ? '#ddd6fe' : '#ede9fe', border: 'none', borderTop: '1px solid #ddd6fe', color: '#6d28d9', fontSize: '0.76rem', fontWeight: 700, padding: '0.4rem', cursor: 'pointer', letterSpacing: '0.02em' }}
+      >
+        {open ? <>Hide <span>▴</span></> : <>View {analysis.suggestions.length} Suggestions and Refine with AI <span>▾</span></>}
+      </button>
+      {open && (
+        <>
+          <div style={{ borderTop: '1px solid #ddd6fe', padding: '0.8rem 0.9rem', display: 'grid', gap: '0.55rem' }}>
+            {analysis.suggestions.map((s) => {
+              const sc = severityChipColor(s.severity);
+              return (
+                <div key={s.id} style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start', padding: '0.6rem 0.75rem', borderRadius: '8px', background: '#fff', border: '1px solid #ddd6fe' }}>
+                  <div style={{ width: '72px', flexShrink: 0, marginTop: '0.1rem' }}>
+                    <span style={CHIP_STYLE(sc)}>{kindLabel(s.kind)}</span>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.84rem', color: '#312e81' }}>{s.title}</div>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.15rem', lineHeight: 1.45 }}>{s.description}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Refine with AI */}
+          <div style={{ borderTop: '1px solid #ddd6fe', padding: '0.8rem 0.9rem', background: '#fff' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Refine with AI</div>
+            <textarea
+              rows={2}
+              placeholder="e.g. Rewrite the lede with the trade angle up front…"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(question); } }}
+              style={{ width: '100%', resize: 'vertical', fontSize: '0.84rem', padding: '0.5rem 0.65rem', borderRadius: '8px', border: '1px solid #ddd6fe', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => submit(question)}
+                disabled={loading || !question.trim()}
+                style={{ background: '#6d28d9', color: '#fff', border: 'none', borderRadius: '6px', padding: '0.35rem 0.85rem', fontSize: '0.82rem', fontWeight: 700, cursor: question.trim() && !loading ? 'pointer' : 'default', opacity: question.trim() && !loading ? 1 : 0.5 }}
+              >
+                {loading ? 'Thinking…' : 'Ask'}
+              </button>
+            </div>
+            {loading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#7c3aed', fontSize: '0.82rem', marginTop: '0.5rem' }}>
+                <span className="spinner" style={{ width: 14, height: 14 }} /> Working on it…
+              </div>
+            )}
+            {response && !loading && (
+              <div style={{ marginTop: '0.75rem', padding: '0.75rem', borderRadius: '8px', background: '#f5f3ff', border: '1px solid #ddd6fe', fontSize: '0.84rem', color: '#312e81', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                {response}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+      <div style={BODY_PREVIEW_STYLE}>{MOCK_BODY_TEXT}</div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Follow-up Option C — Quick prompts + freeform thread
+// ---------------------------------------------------------------------------
+
+interface Exchange { question: string; answer: string; }
+
+function FollowUpC({ analysis }: { analysis: BodyAnalysis }) {
+  const [open, setOpen] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [thread, setThread] = useState<Exchange[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Derive quick prompts from the top suggestions
+  const quickPrompts = analysis.suggestions.slice(0, 3).map((s) => {
+    if (s.kind === 'clarity') return `Help me fix: ${s.title}`;
+    if (s.kind === 'seo') return `How do I improve the SEO here?`;
+    return `Rewrite suggestion: ${s.title}`;
+  });
+
+  function submit(q: string) {
+    if (!q.trim() || loading) return;
+    setLoading(true);
+    const asked = q;
+    setQuestion('');
+    window.setTimeout(() => {
+      setThread((t) => [...t, { question: asked, answer: getMockResponse(asked) }]);
+      setLoading(false);
+    }, 1400);
+  }
+
+  return (
+    <div style={{ ...SHELL_STYLE, border: '1px solid #c4b5fd', background: '#f5f3ff' }}>
+      <div style={{ padding: '0.75rem 0.9rem 0.6rem' }}>
+        <p style={{ margin: 0, fontSize: '0.84rem', color: '#4c1d95', fontWeight: 500, lineHeight: 1.5 }}>{analysis.summary}</p>
+        <p style={{ margin: '0.45rem 0 0', fontSize: '0.78rem', color: '#6d28d9', lineHeight: 1.5 }}>
+          {analysis.suggestions.map((s) => s.title).join(' · ')}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', width: '100%', background: open ? '#ddd6fe' : '#ede9fe', border: 'none', borderTop: '1px solid #ddd6fe', color: '#6d28d9', fontSize: '0.76rem', fontWeight: 700, padding: '0.4rem', cursor: 'pointer', letterSpacing: '0.02em' }}
+      >
+        {open ? <>Hide <span>▴</span></> : <>View {analysis.suggestions.length} Suggestions and Refine with AI <span>▾</span></>}
+      </button>
+      {open && (
+        <>
+          <div style={{ borderTop: '1px solid #ddd6fe', padding: '0.8rem 0.9rem', display: 'grid', gap: '0.55rem' }}>
+            {analysis.suggestions.map((s) => {
+              const sc = severityChipColor(s.severity);
+              return (
+                <div key={s.id} style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start', padding: '0.6rem 0.75rem', borderRadius: '8px', background: '#fff', border: '1px solid #ddd6fe' }}>
+                  <div style={{ width: '72px', flexShrink: 0, marginTop: '0.1rem' }}>
+                    <span style={CHIP_STYLE(sc)}>{kindLabel(s.kind)}</span>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.84rem', color: '#312e81' }}>{s.title}</div>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.15rem', lineHeight: 1.45 }}>{s.description}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Ask AI area */}
+          <div style={{ borderTop: '1px solid #ddd6fe', padding: '0.8rem 0.9rem', background: '#fff' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Refine with AI</div>
+            {/* Quick prompt chips */}
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.55rem' }}>
+              {quickPrompts.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => submit(p)}
+                  disabled={loading}
+                  style={{ background: '#ede9fe', border: '1px solid #c4b5fd', color: '#6d28d9', borderRadius: '999px', padding: '0.25rem 0.7rem', fontSize: '0.76rem', fontWeight: 600, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.5 : 1 }}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            {/* Freeform input */}
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+              <textarea
+                rows={2}
+                placeholder="Or ask anything else…"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(question); } }}
+                style={{ flex: 1, resize: 'vertical', fontSize: '0.84rem', padding: '0.5rem 0.65rem', borderRadius: '8px', border: '1px solid #ddd6fe', outline: 'none', fontFamily: 'inherit' }}
+              />
+              <button
+                type="button"
+                onClick={() => submit(question)}
+                disabled={loading || !question.trim()}
+                style={{ background: '#6d28d9', color: '#fff', border: 'none', borderRadius: '6px', padding: '0.45rem 0.85rem', fontSize: '0.82rem', fontWeight: 700, cursor: question.trim() && !loading ? 'pointer' : 'default', opacity: question.trim() && !loading ? 1 : 0.5, flexShrink: 0 }}
+              >
+                {loading ? '…' : 'Ask'}
+              </button>
+            </div>
+            {/* Thread */}
+            {(thread.length > 0 || loading) && (
+              <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.75rem' }}>
+                {thread.map((ex, i) => (
+                  <div key={i}>
+                    <div style={{ fontSize: '0.76rem', color: '#94a3b8', fontWeight: 600, marginBottom: '0.3rem' }}>{ex.question}</div>
+                    <div style={{ padding: '0.75rem', borderRadius: '8px', background: '#f5f3ff', border: '1px solid #ddd6fe', fontSize: '0.84rem', color: '#312e81', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                      {ex.answer}
+                    </div>
+                  </div>
+                ))}
+                {loading && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#7c3aed', fontSize: '0.82rem' }}>
+                    <span className="spinner" style={{ width: 14, height: 14 }} /> Working on it…
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+      <div style={BODY_PREVIEW_STYLE}>{MOCK_BODY_TEXT}</div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Variant dispatcher
 // ---------------------------------------------------------------------------
 
 function renderVariant(id: VariantId, analysis: BodyAnalysis) {
   switch (id) {
+    case 'followup-b':         return <FollowUpB analysis={analysis} />;
+    case 'followup-c':         return <FollowUpC analysis={analysis} />;
     case 'top-pick':           return <TopPick analysis={analysis} />;
     case 'compact-banner':     return <CompactBanner analysis={analysis} />;
     case 'editorial-card':     return <EditorialCard analysis={analysis} />;
@@ -826,7 +1083,7 @@ function renderVariant(id: VariantId, analysis: BodyAnalysis) {
 // ---------------------------------------------------------------------------
 
 export function BodyUiLab() {
-  const [selectedId, setSelectedId] = useState<VariantId>('top-pick');
+  const [selectedId, setSelectedId] = useState<VariantId>('followup-b');
   const selected = VARIANTS.find((v) => v.id === selectedId)!;
 
   return (
