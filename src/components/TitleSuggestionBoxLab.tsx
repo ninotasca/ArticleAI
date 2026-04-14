@@ -87,7 +87,7 @@ const variants: Variant[] = [
     scoreType: 'multi',
     verdict: 'yellow',
     rationale: 'Good when stakeholders want dimensions like SEO and clarity.',
-    notes: ['SEO 7/10', 'Clarity 8/10', 'Specificity 6/10', 'Brand fit 8/10'],
+    notes: ['SEO 7/10', 'Clarity 8/10', 'Brand fit 6/10', 'Brand fit 8/10'],
     suggestions: [
       'Air Canada and Pilots Union Reach Tentative Labor Agreement',
       'Tentative Labor Deal Reached Between Air Canada and Pilots Union',
@@ -195,7 +195,7 @@ const variants: Variant[] = [
     scoreType: 'multi',
     verdict: 'green',
     rationale: 'Strong option if you want the box itself to become a title ideation tool.',
-    notes: ['SEO 8/10', 'Clarity 8/10', 'Specificity 7/10', 'Brand fit 8/10'],
+    notes: ['SEO 8/10', 'Clarity 8/10', 'Brand fit 7/10', 'Brand fit 8/10'],
     suggestions: ['Air Canada and Pilots Union Reach Tentative Labor Agreement'],
     canPromptMore: true,
     hasDropdown: true,
@@ -349,14 +349,14 @@ function renderVariant(
     <div style={{ marginTop: '0.75rem', borderRadius: '14px', border: '1px solid #c4b5fd', background: '#f5f3ff', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start', padding: '0.8rem 0.95rem', borderBottom: isCollapsed ? 'none' : '1px solid #ddd6fe' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <span style={{ ...verdictPillStyle('#16a34a', '#f0fdf4'), opacity: variant.verdict === 'green' ? 1 : 0.55 }}>Good to go</span>
-          <span style={{ ...verdictPillStyle('#a16207', '#fef3c7'), opacity: variant.verdict === 'yellow' ? 1 : 0.55 }}>Worth Revisiting</span>
-          <span style={{ ...verdictPillStyle('#b91c1c', '#fef2f2'), opacity: variant.verdict === 'red' ? 1 : 0.55 }}>Needs Work</span>
+          <span style={variant.verdict === 'green' ? { ...verdictPillStyle('#16a34a', '#f0fdf4'), borderColor: '#16a34a', outline: '2px solid #16a34a', fontWeight: 800, boxShadow: '0 1px 4px rgba(0,0,0,0.15)' } : { ...verdictPillStyle('#16a34a', '#f0fdf4'), opacity: 0.2, fontWeight: 700 }}>Good to go</span>
+          <span style={variant.verdict === 'yellow' ? { ...verdictPillStyle('#a16207', '#fef3c7'), borderColor: '#a16207', outline: '2px solid #a16207', fontWeight: 800, boxShadow: '0 1px 4px rgba(0,0,0,0.15)' } : { ...verdictPillStyle('#a16207', '#fef3c7'), opacity: 0.2, fontWeight: 700 }}>Worth Revisiting</span>
+          <span style={variant.verdict === 'red' ? { ...verdictPillStyle('#b91c1c', '#fef2f2'), borderColor: '#b91c1c', outline: '2px solid #b91c1c', fontWeight: 800, boxShadow: '0 1px 4px rgba(0,0,0,0.15)' } : { ...verdictPillStyle('#b91c1c', '#fef2f2'), opacity: 0.2, fontWeight: 700 }}>Needs Work</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
           {renderSignalChip('SEO', 'yellow')}
           {renderSignalChip('Clarity', variant.verdict === 'red' ? 'red' : 'green')}
-          {renderSignalChip('Specificity', variant.verdict === 'green' ? 'green' : 'yellow')}
+          {renderSignalChip('Brand Fit', variant.verdict === 'green' ? 'green' : 'yellow')}
           <button
             type="button"
             onClick={onToggleCollapsed}
@@ -437,7 +437,7 @@ function renderScore(variant: Variant) {
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
         <div style={chipStyle}>SEO 8</div>
         <div style={chipStyle}>Clarity 8</div>
-        <div style={chipStyle}>Specificity 7</div>
+        <div style={chipStyle}>Brand Fit 7</div>
       </div>
     );
   }

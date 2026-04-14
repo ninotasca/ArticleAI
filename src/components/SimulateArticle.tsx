@@ -6,6 +6,8 @@ import type { Article, BuiltPrompt, TitleReview } from '../types';
 interface Suggestion {
   title: string;
   description: string;
+  kind?: string;
+  severity?: 'critical' | 'moderate' | 'minor';
 }
 
 interface AnalysisResult {
@@ -101,7 +103,7 @@ function normalizeTitleReview(parsed: any): TitleReview | null {
     chipRatings: {
       seo: review.chipRatings?.seo || 'yellow',
       clarity: review.chipRatings?.clarity || 'yellow',
-      specificity: review.chipRatings?.specificity || 'yellow',
+      brandFit: review.chipRatings?.brandFit || 'yellow',
     },
     collapsed: {
       defaultCollapsed: Boolean(review.collapsed?.defaultCollapsed),
@@ -162,6 +164,8 @@ function parseAiOutput(raw: string): AnalysisResult {
       ).map((s: Record<string, string>) => ({
         title: s.title || s.suggestion || s.name || String(s),
         description: s.description || s.reason || s.explanation || '',
+        kind: s.kind || undefined,
+        severity: s.severity || undefined,
       })),
       titleReview,
     };
@@ -175,6 +179,11 @@ function buildTopPickPrompt(basePrompt: string): string {
 
 IMPORTANT: You must respond with ONLY valid JSON (no markdown, no code blocks, no extra text).
 
+When rating chipRatings:
+- seo: Does the title use relevant search terms a B2B travel industry reader would search for?
+- clarity: Is the main subject immediately clear to the reader?
+- brandFit: Does the title match the publication's editorial voice — credible, trade-appropriate, not clickbait?
+
 Use this exact JSON structure:
 {
   "titleReview": {
@@ -183,7 +192,7 @@ Use this exact JSON structure:
     "chipRatings": {
       "seo": "green | yellow | red",
       "clarity": "green | yellow | red",
-      "specificity": "green | yellow | red"
+      "brandFit": "green | yellow | red"
     },
     "collapsed": {
       "defaultCollapsed": false
@@ -209,7 +218,12 @@ Use this exact JSON structure:
   "body": {
     "analysis": "Your analysis of the article body — what works, what could improve",
     "suggestions": [
-      { "title": "Short suggestion name", "description": "Details of what to improve and why" }
+      {
+        "title": "Short suggestion name",
+        "description": "Details of what to improve and why",
+        "kind": "clarity | seo | structure | tone | fact",
+        "severity": "critical | moderate | minor"
+      }
     ]
   }
 }`;
@@ -527,11 +541,19 @@ export function SimulateArticle() {
                           <span
                             key={status}
                             className="sim-top-pick-pill"
-                            style={{
+                            style={titleReview.overallStatus === status ? {
+                              background: appearance.bg,
+                              color: appearance.text,
+                              borderColor: appearance.text,
+                              outline: `2px solid ${appearance.text}`,
+                              fontWeight: 800,
+                              boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+                            } : {
                               background: appearance.bg,
                               color: appearance.text,
                               borderColor: appearance.border,
-                              opacity: titleReview.overallStatus === status ? 1 : 0.55,
+                              opacity: 0.2,
+                              fontWeight: 700,
                             }}
                           >
                             {appearance.label}
@@ -540,15 +562,16 @@ export function SimulateArticle() {
                       })}
                     </div>
                     <div className="sim-top-pick-signals">
-                      {(['seo', 'clarity', 'specificity'] as const).map((key) => {
+                      {(['seo', 'clarity', 'brandFit'] as const).map((key) => {
                         const chip = getChipAppearance(titleReview.chipRatings[key]);
+                        const label = key === 'seo' ? 'SEO' : key === 'brandFit' ? 'Brand Fit' : 'Clarity';
                         return (
                           <span
                             key={key}
                             className="sim-top-pick-chip"
                             style={{ background: chip.bg, color: chip.text, borderColor: chip.border }}
                           >
-                            {key === 'seo' ? 'SEO' : key.charAt(0).toUpperCase() + key.slice(1)}
+                            {label}
                           </span>
                         );
                       })}
@@ -639,37 +662,57 @@ export function SimulateArticle() {
                 </div>
               </div>
 
+              {phase === 'analyzed' && analysis && (analysis.bodyAnalysis || analysis.bodySuggestions.length > 0) && (
+                <div className="sim-field">
+                  <label>Body Analysis</label>
+                  <div style={{ border: '1px solid #c4b5fd', borderRadius: '10px', background: '#f5f3ff', overflow: 'hidden' }}>
+                    <div
+                      onClick={() => setBodyExpanded(!bodyExpanded)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.65rem 0.9rem', cursor: 'pointer', gap: '0.75rem' }}
+                    >
+                      <span style={{ fontSize: '0.84rem', color: '#4c1d95', fontWeight: 500, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {analysis.bodyAnalysis}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                        {analysis.bodySuggestions.length > 0 && (
+                          <span style={{ fontSize: '0.75rem', color: '#7c3aed', fontWeight: 600 }}>{analysis.bodySuggestions.length} suggestion{analysis.bodySuggestions.length !== 1 ? 's' : ''}</span>
+                        )}
+                        <span style={{ color: '#7c3aed', fontWeight: 700, fontSize: '0.9rem' }}>{bodyExpanded ? '▴' : '▾'}</span>
+                      </div>
+                    </div>
+                    {bodyExpanded && analysis.bodySuggestions.length > 0 && (
+                      <div style={{ borderTop: '1px solid #ddd6fe', padding: '0.8rem 0.9rem', display: 'grid', gap: '0.55rem' }}>
+                        {analysis.bodySuggestions.map((s, i) => {
+                          const sev = s.severity;
+                          const chipColors = sev === 'critical'
+                            ? { bg: '#fef2f2', text: '#991b1b', border: '#fca5a5' }
+                            : { bg: '#fef3c7', text: '#a16207', border: '#fcd34d' };
+                          const kindMap: Record<string, string> = { clarity: 'Clarity', seo: 'SEO', structure: 'Structure', tone: 'Tone', fact: 'Fact-check' };
+                          const kindLabel = s.kind ? (kindMap[s.kind] ?? s.kind) : 'Note';
+                          return (
+                            <div key={i} style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start', padding: '0.6rem 0.75rem', borderRadius: '8px', background: '#fff', border: '1px solid #ddd6fe' }}>
+                              <div style={{ width: '72px', flexShrink: 0, marginTop: '0.1rem' }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.22rem 0.55rem', borderRadius: '999px', background: chipColors.bg, border: `1px solid ${chipColors.border}`, fontSize: '0.74rem', fontWeight: 700, color: chipColors.text }}>
+                                  {kindLabel}
+                                </span>
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: '0.84rem', color: '#312e81' }}>{s.title}</div>
+                                {s.description && <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.15rem', lineHeight: 1.45 }}>{s.description}</div>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="sim-field">
                 <label>
                   Body <span className="sim-required">*</span>
                 </label>
-
-                {phase === 'analyzed' && analysis && (analysis.bodyAnalysis || analysis.bodySuggestions.length > 0) && (
-                  <div className="sim-analysis-box">
-                    <div className="sim-analysis-header" onClick={() => setBodyExpanded(!bodyExpanded)}>
-                      <span>Body Analyzed</span>
-                      <span className="sim-analysis-chevron">{bodyExpanded ? '\u25B4' : '\u25BE'}</span>
-                    </div>
-                    {bodyExpanded && (
-                      <div className="sim-analysis-body">
-                        {analysis.bodyAnalysis && <p className="sim-analysis-text">{analysis.bodyAnalysis}</p>}
-                        {analysis.bodySuggestions.length > 0 && (
-                          <>
-                            <div className="sim-suggestions-label">BODY SUGGESTIONS</div>
-                            <ul className="sim-suggestions-list">
-                              {analysis.bodySuggestions.map((s, i) => (
-                                <li key={i}>
-                                  <span className="sim-suggestion-title">{s.title}</span>
-                                  {s.description && <span className="sim-suggestion-desc">{s.description}</span>}
-                                </li>
-                              ))}
-                            </ul>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 <div className="sim-editor">
                   <div className="sim-editor-menu">

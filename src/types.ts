@@ -57,7 +57,7 @@ export interface TitleReview {
   chipRatings: {
     seo: 'green' | 'yellow' | 'red';
     clarity: 'green' | 'yellow' | 'red';
-    specificity: 'green' | 'yellow' | 'red';
+    brandFit: 'green' | 'yellow' | 'red';
   };
   collapsed: {
     defaultCollapsed: boolean;
