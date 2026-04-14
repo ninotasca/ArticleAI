@@ -11,6 +11,7 @@ import { Settings } from './components/Settings';
 import { TitlePromptLab } from './components/TitlePromptLab';
 import { BodyPromptLab } from './components/BodyPromptLab';
 import { TitleSuggestionBoxLab } from './components/TitleSuggestionBoxLab';
+import { BodyUiLab } from './components/BodyUiLab';
 import { healthCheck, fetchPrompts, fetchPersonas } from './api';
 import type { Prompt, Persona, ComparisonResult } from './types';
 
@@ -138,6 +139,7 @@ function App() {
             <NavLink className={({ isActive }) => isActive ? 'active' : ''} to="/labs/title-prompts">Title Prompt Lab</NavLink>
             <NavLink className={({ isActive }) => isActive ? 'active' : ''} to="/labs/body-prompts">Body Prompt Lab</NavLink>
             <NavLink className={({ isActive }) => isActive ? 'active' : ''} to="/labs/title-ui">Title UI Lab</NavLink>
+            <NavLink className={({ isActive }) => isActive ? 'active' : ''} to="/labs/body-ui">Body UI Lab</NavLink>
           </div>
         </div>
       </nav>
@@ -155,6 +157,7 @@ function App() {
           <Route path="/labs/title-prompts" element={<TitlePromptLab />} />
           <Route path="/labs/body-prompts" element={<BodyPromptLab />} />
           <Route path="/labs/title-ui" element={<TitleSuggestionBoxLab />} />
+          <Route path="/labs/body-ui" element={<BodyUiLab />} />
           <Route path="/settings" element={<Settings health={health} />} />
           <Route path="*" element={<Navigate to="/simulate" replace />} />
         </Routes>
