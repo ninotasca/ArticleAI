@@ -719,7 +719,7 @@ export function SimulateArticle() {
                             const kindLabelText = s.kind ? (kindMap[s.kind] ?? s.kind) : 'Note';
                             return (
                               <div key={i} style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start', padding: '0.6rem 0.75rem', borderRadius: '8px', background: '#fff', border: '1px solid #ddd6fe' }}>
-                                <div style={{ width: '72px', flexShrink: 0, marginTop: '0.1rem' }}>
+                                <div style={{ width: '90px', flexShrink: 0, marginTop: '0.1rem' }}>
                                   <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.22rem 0.55rem', borderRadius: '999px', background: chipColors.bg, border: `1px solid ${chipColors.border}`, fontSize: '0.74rem', fontWeight: 700, color: chipColors.text }}>
                                     {kindLabelText}
                                   </span>

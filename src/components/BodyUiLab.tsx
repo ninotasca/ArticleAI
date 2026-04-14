@@ -317,7 +317,7 @@ function TopPick({ analysis }: { analysis: BodyAnalysis }) {
             const sc = severityChipColor(s.severity);
             return (
               <div key={s.id} style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start', padding: '0.6rem 0.75rem', borderRadius: '8px', background: '#fff', border: '1px solid #ddd6fe' }}>
-                <div style={{ width: '72px', flexShrink: 0, marginTop: '0.1rem' }}>
+                <div style={{ width: '90px', flexShrink: 0, marginTop: '0.1rem' }}>
                   <span style={CHIP_STYLE(sc)}>{kindLabel(s.kind)}</span>
                 </div>
                 <div>
@@ -879,7 +879,7 @@ function FollowUpB({ analysis }: { analysis: BodyAnalysis }) {
               const sc = severityChipColor(s.severity);
               return (
                 <div key={s.id} style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start', padding: '0.6rem 0.75rem', borderRadius: '8px', background: '#fff', border: '1px solid #ddd6fe' }}>
-                  <div style={{ width: '72px', flexShrink: 0, marginTop: '0.1rem' }}>
+                  <div style={{ width: '90px', flexShrink: 0, marginTop: '0.1rem' }}>
                     <span style={CHIP_STYLE(sc)}>{kindLabel(s.kind)}</span>
                   </div>
                   <div>
@@ -981,7 +981,7 @@ function FollowUpC({ analysis }: { analysis: BodyAnalysis }) {
               const sc = severityChipColor(s.severity);
               return (
                 <div key={s.id} style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start', padding: '0.6rem 0.75rem', borderRadius: '8px', background: '#fff', border: '1px solid #ddd6fe' }}>
-                  <div style={{ width: '72px', flexShrink: 0, marginTop: '0.1rem' }}>
+                  <div style={{ width: '90px', flexShrink: 0, marginTop: '0.1rem' }}>
                     <span style={CHIP_STYLE(sc)}>{kindLabel(s.kind)}</span>
                   </div>
                   <div>
