@@ -91,7 +91,7 @@ function buildMessageSchedule(): Array<{ message: string; delay: number }> {
   ];
 }
 
-const ESTIMATED_SECONDS = 20;
+const ESTIMATED_SECONDS = 30;
 
 function normalizeTitleReview(parsed: any): TitleReview | null {
   const review = parsed?.titleReview;
@@ -905,7 +905,6 @@ export function SimulateArticle() {
             <p className="takeover-message" key={takeoverMessage}>{takeoverMessage}</p>
             <div className="takeover-time">
               <span>This should take less than {ESTIMATED_SECONDS} seconds</span>
-              <span className="takeover-elapsed">{elapsedSeconds}s elapsed</span>
             </div>
             <div className="takeover-progress-bar">
               <div className="takeover-progress-fill" style={{ width: `${Math.min((elapsedSeconds / ESTIMATED_SECONDS) * 100, 95)}%` }} />
