@@ -286,6 +286,7 @@ export function SimulateArticle() {
   const [builtPrompts, setBuiltPrompts] = useState<BuiltPrompt[]>([]);
   const [selectedPromptId, setSelectedPromptId] = useState('');
   const [phase, setPhase] = useState<'editing' | 'analyzing' | 'analyzed'>('editing');
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [titleExpanded, setTitleExpanded] = useState(true);
   const [bodyExpanded, setBodyExpanded] = useState(false);
@@ -401,6 +402,7 @@ export function SimulateArticle() {
       setBodyExpanded(false);
       setBodyRefineQuestion('');
       setBodyRefineAnswer('');
+      setWizardStep(1);
       setFollowUpMode(parsed.titleReview?.followUpControls.suggestedModes?.[0] || 'seo');
       setPhase('analyzed');
     } catch (err) {
@@ -526,16 +528,20 @@ export function SimulateArticle() {
 
           <div className="sim-steps">
             <div className="sim-steps-left">
-              <span className="sim-step active">1. Article Content</span>
-              <span className="sim-step">2. Metadata</span>
-              <span className="sim-step">3. Review</span>
+              <span className={`sim-step${wizardStep === 1 ? ' active' : wizardStep > 1 ? ' done' : ''}`}>
+                {wizardStep > 1 ? '✓ ' : ''}1. Article Content
+              </span>
+              <span className={`sim-step${wizardStep === 2 ? ' active' : wizardStep > 2 ? ' done' : ''}`}>
+                {wizardStep > 2 ? '✓ ' : ''}2. Metadata
+              </span>
+              <span className={`sim-step${wizardStep === 3 ? ' active' : ''}`}>3. Review</span>
             </div>
             <div className="sim-draft-badge">
               <span className="sim-draft-dot"></span> Draft
             </div>
           </div>
 
-          <div className="sim-content">
+          {wizardStep === 1 && <div className="sim-content">
             <div className="sim-left">
               <div className="sim-field">
                 <label>
@@ -881,15 +887,94 @@ export function SimulateArticle() {
                 <button className="sim-preview-btn" type="button">&#x1F4CB; Preview Article</button>
               )}
             </div>
-          </div>
+          </div>}
+
+          {/* ── Step 2: Metadata ── */}
+          {wizardStep === 2 && article && (
+            <div className="sim-content">
+              <div className="sim-left">
+                <div className="sim-field">
+                  <label>Summary <span className="sim-required">*</span> <span className="sim-info-icon">&#9432;</span></label>
+                  <textarea
+                    className="sim-textarea"
+                    rows={5}
+                    defaultValue={`${article.title} explores key developments in the travel industry. This article provides essential context and insights for industry professionals and decision-makers.`}
+                  />
+                </div>
+                <div className="sim-field">
+                  <label>SEO Title <span className="sim-info-icon">&#9432;</span></label>
+                  <input type="text" className="sim-input" defaultValue={article.title} />
+                </div>
+                <div className="sim-field">
+                  <label>SEO Meta Description <span className="sim-info-icon">&#9432;</span></label>
+                  <textarea
+                    className="sim-textarea"
+                    rows={4}
+                    defaultValue={`Explore the latest on ${article.title}. Essential reading for travel industry professionals.`}
+                  />
+                </div>
+              </div>
+              <div className="sim-right">
+                <div className="sim-field">
+                  <label>Additional Sections <span className="sim-info-icon">&#9432;</span></label>
+                  <div className="sim-tag-container">
+                    {['Content Location → Asia SoPaci…', 'Destinations → AsiaSoPacific', 'Travel Types → Luxury', 'Travel Types → Spa Report'].map((t) => (
+                      <span key={t} className="sim-tag">{t} <span className="sim-tag-x">×</span></span>
+                    ))}
+                    <span className="sim-tag-add">Add more…</span>
+                    <button type="button" className="sim-tag-clear">Clear All</button>
+                  </div>
+                </div>
+                <div className="sim-field">
+                  <label>Distribution Taxonomy <span className="sim-info-icon">&#9432;</span></label>
+                  <div className="sim-tag-container">
+                    {['RSS Feeds → Social Media', 'RSS Feeds → StoryPorts', 'Widgets → Home · Top Carousel', 'Widgets → Landing · Top Carou…'].map((t) => (
+                      <span key={t} className="sim-tag">{t} <span className="sim-tag-x">×</span></span>
+                    ))}
+                    <span className="sim-tag-add">Add more…</span>
+                    <button type="button" className="sim-tag-clear">Clear All</button>
+                  </div>
+                </div>
+                <div className="sim-field">
+                  <label>Keyword Topics <span className="sim-info-icon">&#9432;</span></label>
+                  <div className="sim-tag-container">
+                    {['Australia', 'Culinary', 'Events', 'Group Travel', 'Hotels and Resorts', 'United Airlines', 'Wellness'].map((t) => (
+                      <span key={t} className="sim-tag">{t} <span className="sim-tag-x">×</span></span>
+                    ))}
+                    <span className="sim-tag-add">Add more…</span>
+                    <button type="button" className="sim-tag-clear">Clear All</button>
+                  </div>
+                </div>
+                <div className="sim-field">
+                  <label>URL Slug <span className="sim-required">*</span> <span className="sim-info-icon">&#9432;</span></label>
+                  <input
+                    type="text"
+                    className="sim-input"
+                    defaultValue={article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}
+                    style={{ color: '#94a3b8' }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="sim-cms-footer">
             <button className="sim-quit-btn" type="button" onClick={loadRandomArticle}>Quit</button>
             <div className="sim-footer-right">
-              <button className="sim-analyze-btn" type="button" onClick={handleAnalyze} disabled={phase === 'analyzing' || !selectedPromptId || builtPrompts.length === 0}>
-                Analyze
-              </button>
-              {phase === 'analyzed' && <button className="sim-next-btn" type="button">Next</button>}
+              {wizardStep === 1 && (
+                <button className="sim-analyze-btn" type="button" onClick={handleAnalyze} disabled={phase === 'analyzing' || !selectedPromptId || builtPrompts.length === 0}>
+                  Analyze
+                </button>
+              )}
+              {wizardStep === 2 && (
+                <button className="sim-quit-btn" type="button" onClick={() => setWizardStep(1)}>← Back</button>
+              )}
+              {wizardStep === 1 && phase === 'analyzed' && (
+                <button className="sim-next-btn" type="button" onClick={() => setWizardStep(2)}>Next</button>
+              )}
+              {wizardStep === 2 && (
+                <button className="sim-next-btn" type="button" onClick={() => setWizardStep(3)}>Next</button>
+              )}
             </div>
           </div>
         </div>
