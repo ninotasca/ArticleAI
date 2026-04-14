@@ -972,22 +972,15 @@ Example format: ["Option 1 text", "Option 2 text", "Option 3 text"]`;
                   <div style={{ padding: '0.75rem 0.9rem 0.65rem', borderBottom: '1px solid #ddd6fe' }}>
                     <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>Refine with AI</div>
                     {/* Section selector */}
-                    <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.7rem' }}>
-                      {(['summary', 'seoTitle', 'keywordTopics'] as const).map((s) => {
-                        const label = s === 'summary' ? 'Summary' : s === 'seoTitle' ? 'SEO Title' : 'Keyword Topics';
-                        const active = metaSection === s;
-                        return (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => { setMetaSection(s); setMetaResults([]); setMetaAccepted(null); setMetaDismissed(new Set()); }}
-                            style={{ padding: '0.25rem 0.7rem', borderRadius: '999px', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', border: active ? '1px solid #7c3aed' : '1px solid #ddd6fe', background: active ? '#ede9fe' : '#fff', color: active ? '#6d28d9' : '#64748b', transition: 'all 0.15s' }}
-                          >
-                            {label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <select
+                      value={metaSection}
+                      onChange={(e) => { setMetaSection(e.target.value as MetaSection); setMetaResults([]); setMetaAccepted(null); setMetaDismissed(new Set()); }}
+                      style={{ width: '100%', marginBottom: '0.7rem', padding: '0.4rem 0.65rem', borderRadius: '6px', border: '1px solid #ddd6fe', background: '#fff', color: '#4c1d95', fontSize: '0.84rem', fontWeight: 600, cursor: 'pointer', outline: 'none' }}
+                    >
+                      <option value="summary">Summary</option>
+                      <option value="seoTitle">SEO Title</option>
+                      <option value="keywordTopics">Keyword Topics</option>
+                    </select>
                     {/* Prompt input */}
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
                       <textarea
