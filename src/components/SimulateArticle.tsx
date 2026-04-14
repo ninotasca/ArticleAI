@@ -298,6 +298,14 @@ export function SimulateArticle() {
   const [bodyRefineAnswer, setBodyRefineAnswer] = useState('');
   const [bodyRefineLoading, setBodyRefineLoading] = useState(false);
 
+  type MetaSection = 'summary' | 'seoTitle' | 'keywordTopics';
+  const [metaSection, setMetaSection] = useState<MetaSection>('summary');
+  const [metaPrompt, setMetaPrompt] = useState('');
+  const [metaLoading, setMetaLoading] = useState(false);
+  const [metaResults, setMetaResults] = useState<string[]>([]);
+  const [metaDismissed, setMetaDismissed] = useState<Set<number>>(new Set());
+  const [metaAccepted, setMetaAccepted] = useState<number | null>(null);
+
   const [takeoverMessage, setTakeoverMessage] = useState('');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -402,6 +410,10 @@ export function SimulateArticle() {
       setBodyExpanded(false);
       setBodyRefineQuestion('');
       setBodyRefineAnswer('');
+      setMetaPrompt('');
+      setMetaResults([]);
+      setMetaDismissed(new Set());
+      setMetaAccepted(null);
       setWizardStep(1);
       setFollowUpMode(parsed.titleReview?.followUpControls.suggestedModes?.[0] || 'seo');
       setPhase('analyzed');
@@ -469,6 +481,47 @@ export function SimulateArticle() {
       setBodyRefineAnswer('Sorry, something went wrong. Please try again.');
     } finally {
       setBodyRefineLoading(false);
+    }
+  }
+
+  async function handleMetaRefine() {
+    if (!article || !metaPrompt.trim()) return;
+    setMetaLoading(true);
+    setMetaResults([]);
+    setMetaDismissed(new Set());
+    setMetaAccepted(null);
+    const sectionLabels: Record<string, string> = {
+      summary: 'article summary',
+      seoTitle: 'SEO title',
+      keywordTopics: 'keyword topics list',
+    };
+    try {
+      const prompt = `You are an editorial metadata assistant for a B2B travel industry publication.
+
+The article title is: "${article.title}"
+The editor wants to improve the ${sectionLabels[metaSection]}.
+Their request: "${metaPrompt}"
+
+Generate exactly 3 distinct options for the ${sectionLabels[metaSection]}. Return ONLY a JSON array of 3 strings, no commentary.
+Example format: ["Option 1 text", "Option 2 text", "Option 3 text"]`;
+      const { result } = await runAiTest(prompt, article.id);
+      // Try to extract a JSON array from the result
+      const match = result.match(/\[[\s\S]*\]/);
+      if (match) {
+        const parsed = JSON.parse(match[0]);
+        if (Array.isArray(parsed)) {
+          setMetaResults(parsed.slice(0, 3).map(String));
+          setMetaLoading(false);
+          return;
+        }
+      }
+      // Fallback: split by newlines
+      const lines = result.split('\n').map((l) => l.replace(/^[\d.\-*"]+\s*/, '').trim()).filter(Boolean).slice(0, 3);
+      setMetaResults(lines.length >= 2 ? lines : [result.trim()]);
+    } catch {
+      setMetaResults(['Unable to generate suggestions. Please try again.']);
+    } finally {
+      setMetaLoading(false);
     }
   }
 
@@ -912,6 +965,98 @@ export function SimulateArticle() {
                     rows={4}
                     defaultValue={`Explore the latest on ${article.title}. Essential reading for travel industry professionals.`}
                   />
+                </div>
+
+                {/* ── Refine with AI ── */}
+                <div style={{ border: '1px solid #c4b5fd', borderRadius: '10px', background: '#f5f3ff', overflow: 'hidden', marginTop: '0.5rem' }}>
+                  <div style={{ padding: '0.75rem 0.9rem 0.65rem', borderBottom: '1px solid #ddd6fe' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>Refine with AI</div>
+                    {/* Section selector */}
+                    <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.7rem' }}>
+                      {(['summary', 'seoTitle', 'keywordTopics'] as const).map((s) => {
+                        const label = s === 'summary' ? 'Summary' : s === 'seoTitle' ? 'SEO Title' : 'Keyword Topics';
+                        const active = metaSection === s;
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => { setMetaSection(s); setMetaResults([]); setMetaAccepted(null); setMetaDismissed(new Set()); }}
+                            style={{ padding: '0.25rem 0.7rem', borderRadius: '999px', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', border: active ? '1px solid #7c3aed' : '1px solid #ddd6fe', background: active ? '#ede9fe' : '#fff', color: active ? '#6d28d9' : '#64748b', transition: 'all 0.15s' }}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Prompt input */}
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                      <textarea
+                        rows={2}
+                        placeholder={
+                          metaSection === 'summary' ? 'e.g. Make it more concise and trade-focused…'
+                          : metaSection === 'seoTitle' ? 'e.g. Include "incentive travel" as a keyword…'
+                          : 'e.g. Add wellness and MICE-related topics…'
+                        }
+                        value={metaPrompt}
+                        onChange={(e) => setMetaPrompt(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleMetaRefine(); } }}
+                        style={{ flex: 1, resize: 'vertical', fontSize: '0.84rem', padding: '0.5rem 0.65rem', borderRadius: '8px', border: '1px solid #ddd6fe', outline: 'none', fontFamily: 'inherit', background: '#fff' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleMetaRefine}
+                        disabled={metaLoading || !metaPrompt.trim()}
+                        style={{ background: '#6d28d9', color: '#fff', border: 'none', borderRadius: '6px', padding: '0.45rem 0.9rem', fontSize: '0.82rem', fontWeight: 700, cursor: metaPrompt.trim() && !metaLoading ? 'pointer' : 'default', opacity: metaPrompt.trim() && !metaLoading ? 1 : 0.5, flexShrink: 0 }}
+                      >
+                        {metaLoading ? '…' : 'Generate'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Results */}
+                  {metaLoading && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#7c3aed', fontSize: '0.82rem', padding: '0.75rem 0.9rem' }}>
+                      <div className="spinner" style={{ width: 14, height: 14 }} /> Generating options…
+                    </div>
+                  )}
+                  {!metaLoading && metaResults.length > 0 && (
+                    <div style={{ padding: '0.65rem 0.9rem', display: 'grid', gap: '0.5rem' }}>
+                      {metaResults.map((r, i) => {
+                        if (metaDismissed.has(i)) return null;
+                        const isAccepted = metaAccepted === i;
+                        return (
+                          <div
+                            key={i}
+                            style={{ background: isAccepted ? '#f0fdf4' : '#fff', border: `1px solid ${isAccepted ? '#86efac' : '#ddd6fe'}`, borderRadius: '8px', padding: '0.65rem 0.75rem', display: 'flex', gap: '0.65rem', alignItems: 'flex-start' }}
+                          >
+                            <div style={{ flex: 1, fontSize: '0.84rem', color: '#1e293b', lineHeight: 1.5 }}>{r}</div>
+                            <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0, marginTop: '0.1rem' }}>
+                              {!isAccepted ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => setMetaAccepted(i)}
+                                    style={{ background: '#dcfce7', border: '1px solid #86efac', color: '#166534', borderRadius: '6px', padding: '0.2rem 0.6rem', fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer' }}
+                                  >
+                                    Use this
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setMetaDismissed((prev) => new Set([...prev, i]))}
+                                    style={{ background: 'none', border: '1px solid #e2e8f0', color: '#94a3b8', borderRadius: '6px', padding: '0.2rem 0.5rem', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer' }}
+                                  >
+                                    ✕
+                                  </button>
+                                </>
+                              ) : (
+                                <span style={{ fontSize: '0.76rem', color: '#16a34a', fontWeight: 700 }}>✓ Applied</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="sim-right">
