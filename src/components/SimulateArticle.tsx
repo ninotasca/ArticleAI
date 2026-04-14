@@ -288,11 +288,14 @@ export function SimulateArticle() {
   const [phase, setPhase] = useState<'editing' | 'analyzing' | 'analyzed'>('editing');
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [titleExpanded, setTitleExpanded] = useState(true);
-  const [bodyExpanded, setBodyExpanded] = useState(true);
+  const [bodyExpanded, setBodyExpanded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [followUpMode, setFollowUpMode] = useState('seo');
   const [followUpPrompt, setFollowUpPrompt] = useState('');
   const [followUpLoading, setFollowUpLoading] = useState(false);
+  const [bodyRefineQuestion, setBodyRefineQuestion] = useState('');
+  const [bodyRefineAnswer, setBodyRefineAnswer] = useState('');
+  const [bodyRefineLoading, setBodyRefineLoading] = useState(false);
 
   const [takeoverMessage, setTakeoverMessage] = useState('');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -395,7 +398,9 @@ export function SimulateArticle() {
       const parsed = parseAiOutput(result);
       setAnalysis(parsed);
       setTitleExpanded(!(parsed.titleReview?.collapsed.defaultCollapsed ?? false));
-      setBodyExpanded(true);
+      setBodyExpanded(false);
+      setBodyRefineQuestion('');
+      setBodyRefineAnswer('');
       setFollowUpMode(parsed.titleReview?.followUpControls.suggestedModes?.[0] || 'seo');
       setPhase('analyzed');
     } catch (err) {
@@ -447,6 +452,21 @@ export function SimulateArticle() {
       setError(err instanceof Error ? err.message : 'Failed to generate more titles');
     } finally {
       setFollowUpLoading(false);
+    }
+  }
+
+  async function handleBodyRefine() {
+    if (!article || !analysis || !bodyRefineQuestion.trim()) return;
+    setBodyRefineLoading(true);
+    setBodyRefineAnswer('');
+    try {
+      const prompt = `You are an editorial assistant. The editor has this body analysis:\n\n${analysis.bodyAnalysis}\n\nSuggestions:\n${analysis.bodySuggestions.map((s, i) => `${i + 1}. ${s.title}: ${s.description}`).join('\n')}\n\nThe editor asks: "${bodyRefineQuestion}"\n\nProvide a concise, actionable response (2-4 sentences).`;
+      const { result } = await runAiTest(prompt, article.id);
+      setBodyRefineAnswer(result.trim());
+    } catch (err) {
+      setBodyRefineAnswer('Sorry, something went wrong. Please try again.');
+    } finally {
+      setBodyRefineLoading(false);
     }
   }
 
@@ -666,44 +686,85 @@ export function SimulateArticle() {
                 <div className="sim-field">
                   <label>Body Analysis</label>
                   <div style={{ border: '1px solid #c4b5fd', borderRadius: '10px', background: '#f5f3ff', overflow: 'hidden' }}>
-                    <div
-                      onClick={() => setBodyExpanded(!bodyExpanded)}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.65rem 0.9rem', cursor: 'pointer', gap: '0.75rem' }}
-                    >
-                      <span style={{ fontSize: '0.84rem', color: '#4c1d95', fontWeight: 500, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {/* Always-visible header: full summary + plain text item list */}
+                    <div style={{ padding: '0.75rem 0.9rem 0.6rem' }}>
+                      <p style={{ margin: 0, fontSize: '0.84rem', color: '#4c1d95', fontWeight: 500, lineHeight: 1.5 }}>
                         {analysis.bodyAnalysis}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                        {analysis.bodySuggestions.length > 0 && (
-                          <span style={{ fontSize: '0.75rem', color: '#7c3aed', fontWeight: 600 }}>{analysis.bodySuggestions.length} suggestion{analysis.bodySuggestions.length !== 1 ? 's' : ''}</span>
-                        )}
-                        <span style={{ color: '#7c3aed', fontWeight: 700, fontSize: '0.9rem' }}>{bodyExpanded ? '▴' : '▾'}</span>
-                      </div>
+                      </p>
+                      {analysis.bodySuggestions.length > 0 && (
+                        <p style={{ margin: '0.45rem 0 0', fontSize: '0.78rem', color: '#6d28d9', lineHeight: 1.5 }}>
+                          {analysis.bodySuggestions.map((s) => s.title).join(' · ')}
+                        </p>
+                      )}
                     </div>
+                    {analysis.bodySuggestions.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setBodyExpanded(!bodyExpanded)}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', width: '100%', background: bodyExpanded ? '#ddd6fe' : '#ede9fe', border: 'none', borderTop: '1px solid #ddd6fe', color: '#6d28d9', fontSize: '0.76rem', fontWeight: 700, padding: '0.4rem', cursor: 'pointer', letterSpacing: '0.02em' }}
+                      >
+                        {bodyExpanded ? <>Hide <span>▴</span></> : <>View {analysis.bodySuggestions.length} Suggestion{analysis.bodySuggestions.length !== 1 ? 's' : ''} and Refine with AI <span>▾</span></>}
+                      </button>
+                    )}
+                    {/* Expanded: individual suggestion cards + Refine with AI */}
                     {bodyExpanded && analysis.bodySuggestions.length > 0 && (
-                      <div style={{ borderTop: '1px solid #ddd6fe', padding: '0.8rem 0.9rem', display: 'grid', gap: '0.55rem' }}>
-                        {analysis.bodySuggestions.map((s, i) => {
-                          const sev = s.severity;
-                          const chipColors = sev === 'critical'
-                            ? { bg: '#fef2f2', text: '#991b1b', border: '#fca5a5' }
-                            : { bg: '#fef3c7', text: '#a16207', border: '#fcd34d' };
-                          const kindMap: Record<string, string> = { clarity: 'Clarity', seo: 'SEO', structure: 'Structure', tone: 'Tone', fact: 'Fact-check' };
-                          const kindLabel = s.kind ? (kindMap[s.kind] ?? s.kind) : 'Note';
-                          return (
-                            <div key={i} style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start', padding: '0.6rem 0.75rem', borderRadius: '8px', background: '#fff', border: '1px solid #ddd6fe' }}>
-                              <div style={{ width: '72px', flexShrink: 0, marginTop: '0.1rem' }}>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.22rem 0.55rem', borderRadius: '999px', background: chipColors.bg, border: `1px solid ${chipColors.border}`, fontSize: '0.74rem', fontWeight: 700, color: chipColors.text }}>
-                                  {kindLabel}
-                                </span>
+                      <>
+                        <div style={{ borderTop: '1px solid #ddd6fe', padding: '0.8rem 0.9rem', display: 'grid', gap: '0.55rem' }}>
+                          {analysis.bodySuggestions.map((s, i) => {
+                            const sev = s.severity;
+                            const chipColors = sev === 'critical'
+                              ? { bg: '#fef2f2', text: '#991b1b', border: '#fca5a5' }
+                              : { bg: '#fef3c7', text: '#a16207', border: '#fcd34d' };
+                            const kindMap: Record<string, string> = { clarity: 'Clarity', seo: 'SEO', structure: 'Structure', tone: 'Tone', fact: 'Fact-check' };
+                            const kindLabelText = s.kind ? (kindMap[s.kind] ?? s.kind) : 'Note';
+                            return (
+                              <div key={i} style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start', padding: '0.6rem 0.75rem', borderRadius: '8px', background: '#fff', border: '1px solid #ddd6fe' }}>
+                                <div style={{ width: '72px', flexShrink: 0, marginTop: '0.1rem' }}>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.22rem 0.55rem', borderRadius: '999px', background: chipColors.bg, border: `1px solid ${chipColors.border}`, fontSize: '0.74rem', fontWeight: 700, color: chipColors.text }}>
+                                    {kindLabelText}
+                                  </span>
+                                </div>
+                                <div>
+                                  <div style={{ fontWeight: 700, fontSize: '0.84rem', color: '#312e81' }}>{s.title}</div>
+                                  {s.description && <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.15rem', lineHeight: 1.45 }}>{s.description}</div>}
+                                </div>
                               </div>
-                              <div>
-                                <div style={{ fontWeight: 700, fontSize: '0.84rem', color: '#312e81' }}>{s.title}</div>
-                                {s.description && <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.15rem', lineHeight: 1.45 }}>{s.description}</div>}
-                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Refine with AI */}
+                        <div style={{ borderTop: '1px solid #ddd6fe', padding: '0.8rem 0.9rem', background: '#fff' }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Refine with AI</div>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                            <textarea
+                              rows={2}
+                              placeholder="Ask about these suggestions…"
+                              value={bodyRefineQuestion}
+                              onChange={(e) => setBodyRefineQuestion(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleBodyRefine(); } }}
+                              style={{ flex: 1, resize: 'vertical', fontSize: '0.84rem', padding: '0.5rem 0.65rem', borderRadius: '8px', border: '1px solid #ddd6fe', outline: 'none', fontFamily: 'inherit' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleBodyRefine}
+                              disabled={bodyRefineLoading || !bodyRefineQuestion.trim()}
+                              style={{ background: '#6d28d9', color: '#fff', border: 'none', borderRadius: '6px', padding: '0.45rem 0.85rem', fontSize: '0.82rem', fontWeight: 700, cursor: bodyRefineQuestion.trim() && !bodyRefineLoading ? 'pointer' : 'default', opacity: bodyRefineQuestion.trim() && !bodyRefineLoading ? 1 : 0.5, flexShrink: 0 }}
+                            >
+                              {bodyRefineLoading ? '…' : 'Ask'}
+                            </button>
+                          </div>
+                          {bodyRefineAnswer && (
+                            <div style={{ marginTop: '0.75rem', padding: '0.75rem', borderRadius: '8px', background: '#f5f3ff', border: '1px solid #ddd6fe', fontSize: '0.84rem', color: '#312e81', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                              {bodyRefineAnswer}
                             </div>
-                          );
-                        })}
-                      </div>
+                          )}
+                          {bodyRefineLoading && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#7c3aed', fontSize: '0.82rem', marginTop: '0.5rem' }}>
+                              <div className="spinner" style={{ width: 14, height: 14 }} /> Working on it…
+                            </div>
+                          )}
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
