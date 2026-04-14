@@ -1020,31 +1020,9 @@ Example format: ["Option 1 text", "Option 2 text", "Option 3 text"]`;
                         return (
                           <div
                             key={i}
-                            style={{ background: isAccepted ? '#f0fdf4' : '#fff', border: `1px solid ${isAccepted ? '#86efac' : '#ddd6fe'}`, borderRadius: '8px', padding: '0.65rem 0.75rem', display: 'flex', gap: '0.65rem', alignItems: 'flex-start' }}
+                            style={{ background: '#fff', border: '1px solid #ddd6fe', borderRadius: '8px', padding: '0.65rem 0.75rem' }}
                           >
-                            <div style={{ flex: 1, fontSize: '0.84rem', color: '#1e293b', lineHeight: 1.5 }}>{r}</div>
-                            <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0, marginTop: '0.1rem' }}>
-                              {!isAccepted ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => setMetaAccepted(i)}
-                                    style={{ background: '#dcfce7', border: '1px solid #86efac', color: '#166534', borderRadius: '6px', padding: '0.2rem 0.6rem', fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer' }}
-                                  >
-                                    Use this
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setMetaDismissed((prev) => new Set([...prev, i]))}
-                                    style={{ background: 'none', border: '1px solid #e2e8f0', color: '#94a3b8', borderRadius: '6px', padding: '0.2rem 0.5rem', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer' }}
-                                  >
-                                    ✕
-                                  </button>
-                                </>
-                              ) : (
-                                <span style={{ fontSize: '0.76rem', color: '#16a34a', fontWeight: 700 }}>✓ Applied</span>
-                              )}
-                            </div>
+                            <div style={{ fontSize: '0.84rem', color: '#1e293b', lineHeight: 1.5 }}>{r}</div>
                           </div>
                         );
                       })}
