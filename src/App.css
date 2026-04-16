@@ -1331,6 +1331,155 @@ tr:hover td {
   background: #1d4ed8;
 }
 
+/* ── Takeover Error State ── */
+.takeover-error-state {
+  gap: 1.25rem;
+}
+.takeover-error-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+.takeover-error-btns {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+.takeover-retry-btn {
+  padding: 0.6rem 1.5rem;
+  border-radius: 8px;
+  border: 2px solid #7c3aed;
+  background: transparent;
+  color: #c4b5fd;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.takeover-retry-btn:hover {
+  background: rgba(124,58,237,0.2);
+}
+
+/* ── Simulate Error Checkbox ── */
+.sim-error-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  padding-bottom: 2px;
+}
+.sim-error-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #ef4444;
+  cursor: pointer;
+}
+
+/* ── Metadata Phase 2 Loading Button ── */
+.sim-meta-loading-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+.sim-meta-loading-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  border: 1px solid #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.sim-meta-loading-btn:hover {
+  background: #fef3c7;
+  border-color: #d97706;
+}
+@keyframes sim-spin {
+  to { transform: rotate(360deg); }
+}
+.sim-meta-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #f59e0b;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: sim-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── Metadata Error Banner ── */
+.sim-meta-error-banner {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-right: 2.25rem;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  border-radius: 8px;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.84rem;
+  max-width: 520px;
+  text-align: center;
+  z-index: 150;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.sim-meta-error-dismiss {
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #991b1b;
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.2rem;
+  opacity: 0.7;
+}
+.sim-meta-error-dismiss:hover {
+  opacity: 1;
+}
+
+/* ── Metadata Completion Toast ── */
+.sim-meta-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+  border-radius: 8px;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.84rem;
+  font-weight: 500;
+  z-index: 150;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  animation: toast-in 0.25s ease;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 /* ── Analysis Suggestion Boxes ── */
 .sim-top-pick-box {
   background: #f5f3ff;

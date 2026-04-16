@@ -285,7 +285,7 @@ export function SimulateArticle() {
   const [articleLoading, setArticleLoading] = useState(true);
   const [builtPrompts, setBuiltPrompts] = useState<BuiltPrompt[]>([]);
   const [selectedPromptId, setSelectedPromptId] = useState('');
-  const [phase, setPhase] = useState<'editing' | 'analyzing' | 'analyzed'>('editing');
+  const [phase, setPhase] = useState<'editing' | 'analyzing' | 'analyzed' | 'skipped'>('editing');
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [titleExpanded, setTitleExpanded] = useState(true);
@@ -313,6 +313,21 @@ export function SimulateArticle() {
   const messageTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const elapsedIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Simulation controls
+  const [simulateErrorStep1, setSimulateErrorStep1] = useState(false);
+  const [simulateErrorStep2, setSimulateErrorStep2] = useState(false);
+
+  // Phase 1 error state (shown inside the takeover overlay)
+  const [takeoverError, setTakeoverError] = useState(false);
+
+  // Phase 2 (metadata) simulation state
+  const [metaPhase, setMetaPhase] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [metaCountdown, setMetaCountdown] = useState(10);
+  const [showMetaCancelDialog, setShowMetaCancelDialog] = useState(false);
+  const [showMetaToast, setShowMetaToast] = useState(false);
+  const [metaErrorInline, setMetaErrorInline] = useState(false);
+  const metaTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   useEffect(() => {
     if (articleIdParam) {
       loadArticleById(parseInt(articleIdParam));
@@ -330,7 +345,44 @@ export function SimulateArticle() {
       .catch(() => {});
   }, []);
 
+  function cancelMetaTimer() {
+    if (metaTimerRef.current) {
+      clearInterval(metaTimerRef.current);
+      metaTimerRef.current = null;
+    }
+    setMetaPhase('idle');
+    setMetaCountdown(10);
+    setShowMetaCancelDialog(false);
+    setShowMetaToast(false);
+    setMetaErrorInline(false);
+    setTakeoverError(false);
+  }
+
+  function startMetaPhase2(shouldError: boolean) {
+    setMetaPhase('loading');
+    setMetaCountdown(10);
+    setMetaErrorInline(false);
+    let count = 10;
+    metaTimerRef.current = setInterval(() => {
+      count -= 1;
+      setMetaCountdown(count);
+      if (count <= 0) {
+        clearInterval(metaTimerRef.current!);
+        metaTimerRef.current = null;
+        if (shouldError) {
+          setMetaPhase('error');
+          setMetaErrorInline(true);
+        } else {
+          setMetaPhase('ready');
+          setShowMetaToast(true);
+          setTimeout(() => setShowMetaToast(false), 4000);
+        }
+      }
+    }, 1000);
+  }
+
   async function loadArticleById(id: number) {
+    cancelMetaTimer();
     setArticleLoading(true);
     setPhase('editing');
     setAnalysis(null);
@@ -347,6 +399,7 @@ export function SimulateArticle() {
   }
 
   async function loadRandomArticle() {
+    cancelMetaTimer();
     setArticleLoading(true);
     setPhase('editing');
     setAnalysis(null);
@@ -372,6 +425,37 @@ export function SimulateArticle() {
     }
   }, []);
 
+  function handleNextFromStep1() {
+    setWizardStep(2);
+  }
+
+  function handleMetaContinueWithoutAI() {
+    cancelMetaTimer();
+    setMetaPhase('error');
+    setMetaErrorInline(true);
+    setShowMetaCancelDialog(false);
+    // Advance to step 2 (metadata) regardless of which step the dialog was opened from
+    setWizardStep(2);
+  }
+
+  function handleBackToStep1() {
+    cancelMetaTimer();
+    setWizardStep(1);
+  }
+
+  function handleStep1ContinueWithoutAI() {
+    abortRef.current = true;
+    cleanupTakeover();
+    setTakeoverError(false);
+    setPhase('skipped');
+  }
+
+  function handleRetryAnalyze() {
+    setTakeoverError(false);
+    setPhase('editing');
+    setTimeout(() => handleAnalyze(), 50);
+  }
+
   async function handleAnalyze() {
     if (!article || !selectedPromptId) return;
     const prompt = builtPrompts.find((bp) => bp.id === selectedPromptId);
@@ -379,9 +463,11 @@ export function SimulateArticle() {
 
     abortRef.current = false;
     setShowCancelConfirm(false);
+    setTakeoverError(false);
     setPhase('analyzing');
     setElapsedSeconds(0);
     setError(null);
+    cancelMetaTimer();
 
     const schedule = buildMessageSchedule();
     setTakeoverMessage(schedule[0].message);
@@ -397,6 +483,21 @@ export function SimulateArticle() {
     elapsedIntervalRef.current = setInterval(() => {
       setElapsedSeconds((s) => s + 1);
     }, 1000);
+
+    // Simulate Step 1 AI error
+    if (simulateErrorStep1) {
+      const errorTimer = setTimeout(() => {
+        if (!abortRef.current) {
+          cleanupTakeover();
+          setTakeoverError(true);
+          // keep phase as 'analyzing' so overlay stays visible
+        }
+      }, 8000);
+      messageTimersRef.current.push(errorTimer);
+      return;
+    }
+
+    const shouldErrorStep2 = simulateErrorStep2;
 
     try {
       const wrappedPrompt = buildTopPickPrompt(prompt.assembledPrompt);
@@ -417,6 +518,8 @@ export function SimulateArticle() {
       setWizardStep(1);
       setFollowUpMode(parsed.titleReview?.followUpControls.suggestedModes?.[0] || 'seo');
       setPhase('analyzed');
+      // Auto-kick off Phase 2 (metadata) in background
+      startMetaPhase2(shouldErrorStep2);
     } catch (err) {
       if (abortRef.current) return;
       cleanupTakeover();
@@ -562,6 +665,22 @@ Example format: ["Option 1 text", "Option 2 text", "Option 3 text"]`;
               ))}
             </select>
           </div>
+          <label className="sim-error-toggle">
+            <input
+              type="checkbox"
+              checked={simulateErrorStep1}
+              onChange={(e) => setSimulateErrorStep1(e.target.checked)}
+            />
+            Simulate Error: AI Step 1
+          </label>
+          <label className="sim-error-toggle">
+            <input
+              type="checkbox"
+              checked={simulateErrorStep2}
+              onChange={(e) => setSimulateErrorStep2(e.target.checked)}
+            />
+            Simulate Error: AI Step 2
+          </label>
         </div>
         <button className="btn btn-secondary" onClick={loadRandomArticle} disabled={articleLoading}>
           {articleLoading ? 'Loading...' : 'Fetch New Article'}
@@ -1077,16 +1196,27 @@ Example format: ["Option 1 text", "Option 2 text", "Option 3 text"]`;
           <div className="sim-cms-footer">
             <button className="sim-quit-btn" type="button" onClick={loadRandomArticle}>Quit</button>
             <div className="sim-footer-right">
-              {wizardStep === 1 && (
-                <button className="sim-analyze-btn" type="button" onClick={handleAnalyze} disabled={phase === 'analyzing' || !selectedPromptId || builtPrompts.length === 0}>
+              {wizardStep === 1 && phase === 'editing' && (
+                <button className="sim-analyze-btn" type="button" onClick={handleAnalyze} disabled={!selectedPromptId || builtPrompts.length === 0}>
                   Analyze
                 </button>
               )}
-              {wizardStep === 2 && (
-                <button className="sim-quit-btn" type="button" onClick={() => setWizardStep(1)}>← Back</button>
-              )}
-              {wizardStep === 1 && phase === 'analyzed' && (
+              {wizardStep === 1 && phase === 'skipped' && (
                 <button className="sim-next-btn" type="button" onClick={() => setWizardStep(2)}>Next</button>
+              )}
+              {wizardStep === 2 && (
+                <button className="sim-quit-btn" type="button" onClick={handleBackToStep1}>← Back</button>
+              )}
+              {wizardStep === 1 && phase === 'analyzed' && metaPhase === 'loading' && (
+                <div className="sim-meta-loading-wrap">
+                  <button className="sim-meta-loading-btn" type="button" onClick={() => setShowMetaCancelDialog(true)}>
+                    <span className="sim-meta-spinner" />
+                    Analyzing Metadata… ({metaCountdown}s)
+                  </button>
+                </div>
+              )}
+              {wizardStep === 1 && phase === 'analyzed' && metaPhase !== 'loading' && (
+                <button className="sim-next-btn" type="button" onClick={handleNextFromStep1}>Next</button>
               )}
               {wizardStep === 2 && (
                 <button className="sim-next-btn" type="button" onClick={() => setWizardStep(3)}>Next</button>
@@ -1098,20 +1228,32 @@ Example format: ["Option 1 text", "Option 2 text", "Option 3 text"]`;
 
       {phase === 'analyzing' && (
         <div className="takeover-overlay">
-          <div className="takeover-content">
-            <div className="takeover-logo">
-              <img src="/northstar-logo.svg" alt="Northstar" />
+          {takeoverError ? (
+            <div className="takeover-content takeover-error-state">
+              <div className="takeover-error-icon">⚠️</div>
+              <h3 className="takeover-title">AI Analysis Failed</h3>
+              <p className="takeover-message">The AI service encountered an error or took too long to respond. You can retry or continue without AI suggestions.</p>
+              <div className="takeover-error-btns">
+                <button className="takeover-retry-btn" type="button" onClick={handleRetryAnalyze}>↺ Retry</button>
+                <button className="takeover-cancel-btn" type="button" onClick={handleStep1ContinueWithoutAI}>Continue Without AI</button>
+              </div>
             </div>
-            <h3 className="takeover-title">Analyzing Article</h3>
-            <p className="takeover-message" key={takeoverMessage}>{takeoverMessage}</p>
-            <div className="takeover-time">
-              <span>This should take less than {ESTIMATED_SECONDS} seconds</span>
+          ) : (
+            <div className="takeover-content">
+              <div className="takeover-logo">
+                <img src="/northstar-logo.svg" alt="Northstar" />
+              </div>
+              <h3 className="takeover-title">Analyzing Article</h3>
+              <p className="takeover-message" key={takeoverMessage}>{takeoverMessage}</p>
+              <div className="takeover-time">
+                <span>This should take less than {ESTIMATED_SECONDS} seconds</span>
+              </div>
+              <div className="takeover-progress-bar">
+                <div className="takeover-progress-fill" style={{ width: `${Math.min((elapsedSeconds / ESTIMATED_SECONDS) * 100, 95)}%` }} />
+              </div>
+              <button className="takeover-cancel-btn" type="button" onClick={handleCancelRequest}>Cancel Analysis</button>
             </div>
-            <div className="takeover-progress-bar">
-              <div className="takeover-progress-fill" style={{ width: `${Math.min((elapsedSeconds / ESTIMATED_SECONDS) * 100, 95)}%` }} />
-            </div>
-            <button className="takeover-cancel-btn" type="button" onClick={handleCancelRequest}>Cancel Analysis</button>
-          </div>
+          )}
 
           {showCancelConfirm && (
             <div className="takeover-confirm-overlay">
@@ -1125,6 +1267,41 @@ Example format: ["Option 1 text", "Option 2 text", "Option 3 text"]`;
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Metadata cancel dialog */}
+      {showMetaCancelDialog && (
+        <div className="takeover-overlay" style={{ zIndex: 200 }}>
+          <div className="takeover-confirm-overlay" style={{ position: 'static', background: 'transparent' }}>
+            <div className="takeover-confirm-dialog">
+              <h4>AI Metadata Analysis In Progress</h4>
+              <p>Metadata tagging is still running in the background. If you continue now, AI suggestions will not be available for this step.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: '#94a3b8', fontSize: '0.85rem' }}>
+                <span className="sim-meta-spinner" style={{ borderTopColor: '#94a3b8' }} />
+                <span>Analyzing… {metaCountdown}s remaining</span>
+              </div>
+              <div className="takeover-confirm-btns">
+                <button className="takeover-confirm-back" type="button" onClick={() => setShowMetaCancelDialog(false)}>Wait for AI</button>
+                <button className="takeover-confirm-yes" type="button" onClick={handleMetaContinueWithoutAI}>Continue Without AI</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2 metadata error banner */}
+      {metaErrorInline && (
+        <div className="sim-meta-error-banner">
+          <strong>AI metadata analysis was unavailable.</strong> You can still proceed — the metadata fields will need to be tagged manually.
+          <button className="sim-meta-error-dismiss" type="button" onClick={() => setMetaErrorInline(false)}>✕</button>
+        </div>
+      )}
+
+      {/* Completion toast */}
+      {showMetaToast && (
+        <div className="sim-meta-toast">
+          ✓ AI metadata analysis complete. Ready to continue.
         </div>
       )}
     </div>
